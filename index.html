@@ -13,7 +13,1592 @@
   <style>
     :root {
       --primary-color: #06c755;
+      --bg-color: #f8f9f<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LINE着せ替え 爆速ジェネレーター v10 + リアルタイムプレビュー</title>
+  
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pica/9.0.1/pica.min.js"></script>
+
+  <style>
+    :root {
+      --primary-color: #06c755;
       --bg-color: #f8f9fa;
+      --card-bg: #ffffff;
+      --border-color: #e2e8f0;
+      --text-color: #334155;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: var(--bg-color); color: var(--text-color); margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; }
+    
+    header { background: var(--card-bg); border-bottom: 1px solid var(--border-color); padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; }
+    h1 { margin: 0; font-size: 18px; color: var(--primary-color); display: flex; align-items: center; gap: 10px; }
+    .progress-container { flex-grow: 1; max-width: 400px; margin: 0 20px; text-align: center; }
+    .progress-bar-bg { background: var(--border-color); height: 10px; border-radius: 5px; overflow: hidden; margin-top: 5px; }
+    .progress-bar { background: var(--primary-color); height: 100%; width: 0%; transition: width 0.3s; }
+    
+    .steps-nav { display: flex; background: #edf2f7; border-bottom: 1px solid var(--border-color); }
+    .step-tab { flex: 1; text-align: center; padding: 12px; cursor: pointer; font-weight: bold; color: #718096; border-bottom: 3px solid transparent; transition: all 0.2s; }
+    .step-tab.active { color: var(--primary-color); border-bottom-color: var(--primary-color); background: var(--card-bg); }
+    
+    .main-container { display: flex; flex-grow: 1; overflow: hidden; }
+    
+    .sidebar { width: 320px; border-right: 1px solid var(--border-color); background: var(--card-bg); overflow-y: auto; padding: 10px; flex-shrink: 0; }
+    .group-item { padding: 12px; border-radius: 6px; margin-bottom: 8px; cursor: pointer; border: 1px solid var(--border-color); transition: all 0.2s; display: flex; justify-content: space-between; align-items: center;}
+    .group-item:hover { background: #f1f5f9; }
+    .group-item.active { border-color: var(--primary-color); background: #f0fdf4; box-shadow: 0 0 0 2px rgba(6, 199, 85, 0.2); }
+    .group-item.completed { background: #e6fcf5; border-color: #20c997; }
+    .badge { font-size: 11px; background: #e2e8f0; padding: 2px 6px; border-radius: 4px; color: #64748b; }
+    .completed .badge { background: #20c997; color: white; }
+
+    .workspace { flex-grow: 1; display: flex; flex-direction: column; background: #f1f5f9; padding: 20px; overflow-y: auto; }
+    .editor-box { background: var(--card-bg); border-radius: 8px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); display: flex; flex-direction: column; gap: 15px; min-height: 450px; margin-bottom: 15px; }
+    
+    .drop-zone { border: 2px dashed #cbd5e1; border-radius: 6px; height: 260px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; background: #f8fafc; transition: background 0.2s; position: relative;}
+    .drop-zone:hover { background: #f1f5f9; }
+    .cropper-wrapper { width: 100%; height: 260px; display: none; }
+    .cropper-wrapper img { max-width: 100%; max-height: 100%; }
+
+    .toolbar { display: flex; justify-content: space-between; align-items: center; }
+    .btn-group { display: flex; gap: 8px; }
+    .btn { padding: 8px 16px; border-radius: 4px; border: 1px solid #cbd5e1; background: white; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.2s; }
+    .btn-primary { background: var(--primary-color); color: white; border: none; }
+    .btn-primary:hover { background: #05a044; }
+    .btn-danger { border-color: #ef4444; color: #ef4444; }
+    .btn-danger:hover { background: #fef2f2; }
+    
+    .preview-bg-check { width: 100%; height: 60px; border-radius: 6px; display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 10px; border: 1px solid var(--border-color); }
+    .bg-mode-transparent { background-image: linear-gradient(45deg, #e2e8f0 25%, transparent 25%), linear-gradient(-45deg, #e2e8f0 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e2e8f0 75%), linear-gradient(-45deg, transparent 75%, #e2e8f0 75%); background-size: 10px 10px; background-position: 0 0, 0 5px, 5px -5px, -5px 0; }
+    .bg-mode-white { background: #ffffff; }
+    .bg-mode-black { background: #111111; color: white; }
+
+    .derived-previews { display: flex; gap: 15px; margin-top: 15px; flex-wrap: wrap; }
+    .preview-card { background: #f8fafc; padding: 10px; border-radius: 6px; border: 1px solid var(--border-color); text-align: center; }
+    .preview-img-wrap { min-height: 80px; display: flex; align-items: center; justify-content: center; margin-bottom: 5px; padding: 5px;}
+    .preview-img-wrap img { max-height: 80px; max-width: 120px; object-fit: contain; }
+
+    .final-stage { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .checklist-box { background: var(--card-bg); padding: 20px; border-radius: 8px; max-height: 450px; overflow-y: auto; }
+    .check-item { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; font-size: 14px; }
+    .check-item.missing { color: #ef4444; font-weight: bold; }
+    .check-item.ok { color: #10b981; }
+
+    .mode-selector { display: flex; justify-content: center; gap: 10px; background: var(--card-bg); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 15px; }
+    .mode-selector .btn.active { background: var(--primary-color); color: white; border-color: var(--primary-color); }
+    .btn.active { background: var(--primary-color); color: white; border-color: var(--primary-color); }
+
+    /* 🔐 パスコード画面プレビュー */
+    .passcode-slots { display: flex; gap: 10px; margin: 18px 0 22px; }
+    .passcode-slot { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #f1f5f9; border: 1px dashed #cbd5e1; }
+    .passcode-slot img { max-width: 100%; max-height: 100%; object-fit: contain; }
+    .passcode-keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%; }
+    .passcode-key { height: 34px; display: flex; align-items: center; justify-content: center; background: #f8fafc; border-radius: 50%; font-size: 13px; color: #334155; border: 1px solid #edf2f7; }
+    .passcode-key.empty { background: transparent; border: none; }
+    
+    #bulk-pieces-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+      gap: 15px;
+      border: 1px solid var(--border-color);
+      padding: 15px;
+      border-radius: 6px;
+      background: #f8fafc;
+      display: none;
+    }
+
+    /* 📱 LINE風リアルタイムプレビュー用スタイル */
+    .preview-sidebar { width: 330px; border-left: 1px solid var(--border-color); background: var(--card-bg); display: flex; flex-direction: column; padding: 15px; flex-shrink: 0; overflow-y: auto; }
+    .preview-title-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; }
+    .phone-mockup { width: 100%; height: 500px; border: 12px solid #1e293b; border-radius: 28px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); background: #ffffff; overflow: hidden; display: flex; flex-direction: column; position: relative; margin: 0 auto; }
+    .phone-screen { display: flex; flex-direction: column; height: 100%; width: 100%; }
+    .phone-header { background: #ffffff; padding: 12px 15px; font-size: 14px; font-weight: bold; border-bottom: 1px solid #edf2f7; color: #111111; text-align: center; flex-shrink: 0; }
+    .phone-body { flex-grow: 1; background: #ffffff; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; }
+    
+    /* ホーム画面モック */
+    .phone-profile { display: flex; align-items: center; gap: 10px; padding-bottom: 10px; border-bottom: 1px solid #f1f5f9; }
+    .phone-avatar { width: 42px; height: 42px; border-radius: 16px; background: #cbd5e1; object-fit: cover; }
+    .phone-avatar-sm { width: 22px; height: 22px; border-radius: 8px; background: #cbd5e1; object-fit: cover; flex-shrink: 0; }
+    .phone-username { font-weight: bold; font-size: 13px; color: #1e293b; }
+    .phone-dummy-list { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+    .phone-dummy-item-user { height: 32px; background: #f8fafc; border-radius: 6px; border: 1px solid #f1f5f9; }
+    
+    /* トーク画面風モック */
+    .chat-bubble { max-width: 80%; padding: 8px 12px; border-radius: 14px; margin-bottom: 8px; font-size: 11px; line-height: 1.4; position: relative; clear: both; word-break: break-all; }
+    .chat-bubble.left { background: #ffffff; color: #000000; float: left; border: 1px solid #e2e8f0; }
+    .chat-bubble.right { background: #a0ea6c; color: #000000; float: right; }
+    
+    /* 下部ナビゲーションバー */
+    .phone-nav { height: 60px; border-top: 1px solid #e2e8f0; display: flex; background: #ffffff; background-size: cover; background-position: center; flex-shrink: 0; position: relative; }
+    .phone-nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; position: relative; padding: 2px 0; transition: background 0.1s; z-index: 2; }
+    .phone-nav-item:hover { background: rgba(0,0,0,0.02); }
+    .phone-nav-item img { height: 34px; width: auto; object-fit: contain; display: none; }
+    .phone-nav-item span { font-size: 9px; color: #64748b; margin-top: 2px; transform: scale(0.9); }
+    .phone-nav-item.active span { color: var(--primary-color); font-weight: bold; }
+    .dummy-icon { width: 22px; height: 22px; border-radius: 50%; background: #94a3b8; }
+    .phone-nav-item.active .dummy-icon { background: var(--primary-color); }
+
+    /* 📱 ニュース/TODAY/ショッピング/アプリ用の追加プレビュー行 */
+    .phone-nav-extra { display: flex; background: #f8fafc; border: 1px solid var(--border-color); border-radius: 12px; padding: 6px 0; }
+    .phone-nav-extra .phone-nav-item span { color: #64748b; }
+
+    /* 📱 スマホ表示用（PC表示のスタイルは上のルールのまま変更しません） */
+    @media (max-width: 820px) {
+      body { height: auto; min-height: 100vh; }
+
+      header { flex-wrap: wrap; padding: 10px 12px; gap: 8px; }
+      h1 { font-size: 15px; flex-basis: 100%; }
+      .progress-container { order: 3; flex-basis: 100%; max-width: 100%; margin: 0; }
+      .btn-group { flex-wrap: wrap; gap: 6px; }
+      header .btn { padding: 6px 10px; font-size: 12px; }
+
+      .steps-nav { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      .step-tab { flex: 0 0 auto; padding: 10px 14px; font-size: 13px; white-space: nowrap; }
+
+      .main-container { flex-direction: column; overflow: visible; height: auto; }
+
+      .sidebar {
+        width: 100%;
+        max-height: none;
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        flex-direction: row;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        gap: 8px;
+        padding: 10px;
+      }
+      .sidebar .group-item { flex: 0 0 auto; min-width: 160px; margin-bottom: 0; white-space: nowrap; }
+
+      .workspace { padding: 12px; overflow-y: visible; }
+      .editor-box { min-height: 0; padding: 14px; }
+
+      .toolbar { flex-wrap: wrap; gap: 8px; }
+      .toolbar .btn-group { width: 100%; justify-content: flex-start; }
+
+      .drop-zone { height: 220px; }
+      .cropper-wrapper { height: 220px; }
+
+      .derived-previews { justify-content: center; }
+
+      .final-stage { grid-template-columns: 1fr; }
+      .checklist-box { max-height: 320px; }
+
+      .preview-sidebar { width: 100%; border-left: none; border-top: 1px solid var(--border-color); }
+      .phone-mockup { max-width: 300px; height: 440px; }
+
+      #bulk-pieces-container { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>🎨 LINE着せ替え 爆速ジェネレーター v10</h1>
+    <div class="progress-container">
+      <span id="progress-text">作成状況: 0% (0 / 62枚)</span>
+      <div class="progress-bar-bg"><div id="progress-bar" class="progress-bar"></div></div>
+    </div>
+    <div class="btn-group">
+      <button class="btn" style="border-color: var(--primary-color); color: var(--primary-color); font-weight: bold;" onclick="togglePreviewPanel()">📱 プレビュー開閉</button>
+      <button class="btn" onclick="exportTemplate()">💾 途中保存(JSON)</button>
+      <button class="btn" onclick="document.getElementById('importFile').click()">📂 読込</button>
+      <button class="btn btn-danger" onclick="clearAllData()">🗑️ 全リセット</button>
+      <input type="file" id="importFile" style="display:none" accept=".json" onchange="importTemplate(this)">
+    </div>
+  </header>
+
+  <div class="steps-nav">
+    <div class="step-tab" onclick="switchStep(1)">1. メイン画像</div>
+    <div class="step-tab" onclick="switchStep(2)">2. メニューボタン</div>
+    <div class="step-tab" onclick="switchStep(3)">3. パスコード</div>
+    <div class="step-tab" onclick="switchStep(4)">4. プロフ＆背景</div>
+    <div class="step-tab" onclick="switchStep(5)">5. 出力＆ZIP</div>
+  </div>
+
+  <div class="main-container">
+    <div class="sidebar" id="sidebar-list"></div>
+
+    <div class="workspace">
+      <div id="bulk-mode-selector" class="mode-selector" style="display:none;">
+        <button class="btn" id="btn-mode-bulk" onclick="switchBulkMode('bulk')">✨ 透過自動トリミング・シート一括割当</button>
+        <button class="btn" id="btn-mode-single" onclick="switchBulkMode('single')">🎯 1枚ずつ自由に個別トリミング</button>
+      </div>
+
+      <div class="editor-box" id="editor-view">
+        <div class="toolbar">
+          <h2 id="current-group-title" style="margin:0; font-size:16px;">用途を選択してください</h2>
+          <div class="btn-group">
+            <button class="btn btn-primary" onclick="document.getElementById('imageLoader').click()">📂 画像ファイルを選択</button>
+            <button class="btn" onclick="changeBgMode('transparent')">格子</button>
+            <button class="btn" onclick="changeBgMode('white')">白</button>
+            <button class="btn" onclick="changeBgMode('black')">黒</button>
+          </div>
+        </div>
+
+        <div class="drop-zone bg-mode-transparent" id="drop-zone" ondragover="event.preventDefault()" ondrop="handleDrop(event)" onclick="handleDropZoneClick(event)">
+          <span id="drop-hint">ここに画像をドラッグ＆ドロップ または 上の「画像ファイルを選択」をクリック</span>
+          <input type="file" id="imageLoader" style="display:none" accept="image/*" onchange="handleFileSelect(this)">
+          <div class="cropper-wrapper" id="cropper-wrapper" onclick="event.stopPropagation()">
+            <img id="cropper-target">
+          </div>
+        </div>
+
+        <div class="toolbar">
+          <span style="font-size: 12px; color:#64748b;">※切り抜き枠は最適な比率に自動固定されます。</span>
+          <button class="btn btn-primary" id="btn-generate" onclick="generateDerivedImages()">✂️ トリミングして一括派生生成</button>
+        </div>
+
+        <div class="derived-previews" id="derived-previews"></div>
+      </div>
+
+      <div class="editor-box" id="bulk-view" style="display:none;">
+        <div class="toolbar">
+          <h2 id="bulk-view-title" style="margin:0; font-size:16px;">✨ シート 透過自動トリミング分割</h2>
+          <div class="btn-group">
+            <button class="btn" onclick="changeBgMode('transparent')">格子</button>
+            <button class="btn" onclick="changeBgMode('white')">白</button>
+            <button class="btn" onclick="changeBgMode('black')">黒</button>
+          </div>
+        </div>
+        
+        <div id="bulk-reset-area" style="display:none; margin-bottom: 10px;">
+          <button class="btn" onclick="showBulkSetup()" style="font-size:13px; padding:6px 12px;">📂 別のシート画像を選ぶ / 行・列の設定を変更する</button>
+        </div>
+
+        <div id="bulk-setup-area" style="display:flex; flex-direction:column; gap:15px;">
+          <p style="font-size:13px; color:#64748b; margin:0;">イラストの周りの【透明な部分を自動判別】し、行→列の順に余白で区切られた領域を検出します。<br>行数・列数の指定は不要です。マス目が不揃いでも、余白（透明部分）さえあれば検出した数だけ自動で切り分けます。</p>
+
+          <div style="display:flex; gap:10px; align-items:center; background:#edf2f7; padding:10px; border-radius:6px; font-size:12px; color:#4a5568;">
+            <span>💡 検出順は画像の上→下、各行の左→右です。並び順どおりに配置してアップロードしてください。</span>
+          </div>
+
+          <div class="drop-zone bg-mode-transparent" id="bulk-drop-zone" ondragover="event.preventDefault()" ondrop="handleBulkDrop(event)" onclick="handleBulkDropZoneClick(event)">
+            <span id="bulk-drop-hint">ここにイラストシートをドラッグ＆ドロップ または 上の「シート画像を選択」をクリック</span>
+            <input type="file" id="bulkImageLoader" style="display:none" accept="image/*" onchange="handleBulkFileSelect(this)">
+            <div id="bulk-img-preview-wrap" style="display:none; max-height:150px; text-align:center; width:100%;">
+              <img id="bulk-source-img" style="max-height:150px; max-width:100%; object-fit:contain; border:1px solid var(--border-color);">
+            </div>
+          </div>
+
+          <div id="bulk-action-bar" style="display:none; justify-content:flex-end;">
+            <button class="btn btn-primary" onclick="processBulkSplit()">🔍 透明部分を自動判別してピタッと切り分け</button>
+          </div>
+        </div>
+
+        <div id="bulk-overlay-section" style="display:none; flex-direction:column; gap:8px;">
+          <p style="font-size:12px; color:#4a5568; margin:0;">📍 元画像の中に自動生成された枠がそのまま表示されています。枠をクリックして選択→ドラッグで移動、右下の■をドラッグでサイズ変更（比率固定）できます。</p>
+          <div id="bulk-overlay-wrap" style="max-height:480px; overflow:auto; border:1px solid var(--border-color); border-radius:6px; background-image: linear-gradient(45deg, #e2e8f0 25%, transparent 25%), linear-gradient(-45deg, #e2e8f0 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e2e8f0 75%), linear-gradient(-45deg, transparent 75%, #e2e8f0 75%); background-size: 16px 16px; background-position: 0 0, 0 8px, 8px -8px, -8px 0;">
+            <canvas id="bulk-overlay-canvas" style="max-width:100%; height:auto; display:block; cursor:crosshair; touch-action:none;"></canvas>
+          </div>
+        </div>
+
+        <div id="bulk-pieces-container"></div>
+
+        <div id="bulk-submit-bar" style="display:none; text-align:right; border-top:1px solid var(--border-color); padding-top:15px; margin-top:15px;">
+          <button class="btn btn-primary" style="padding:12px 24px; font-size:15px;" onclick="applyBulkImagesToStore()">✨ 割り当てた全画像を自動リサイズして一括生成・保存！</button>
+        </div>
+      </div>
+
+      <div class="editor-box final-stage" id="final-view" style="display:none;">
+        <div>
+          <h3>📦 パッケージダウンロード</h3>
+          <p>すべての準備が整ったら、以下のボタンからZIP形式で一括保存できます。</p>
+          <button class="btn btn-primary" style="padding:15px 30px; font-size:18px;" onclick="downloadZip()">LINE用 theme.zip を生成</button>
+          <div id="missing-alert" style="margin-top:15px; color:#ef4444; font-weight:bold;"></div>
+        </div>
+        <div class="checklist-box">
+          <h3>🔍 全62ファイル 生成チェック（赤字は未作成）</h3>
+          <div id="checklist-output"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="preview-sidebar" id="preview-sidebar">
+      <div class="preview-title-bar">
+        <h3 style="margin:0; font-size:13px; color:#475569;" id="preview-sidebar-title">📱 着せ替え実機風プレビュー</h3>
+        <span style="font-size:11px; color:#94a3b8;" id="preview-sidebar-hint">メニューを叩いてON/OFF切替</span>
+      </div>
+      <div id="passcode-toggle-bar" style="display:none; flex-wrap:wrap; gap:6px; margin-bottom:10px;">
+        <button class="btn active" id="pc-btn-off" onclick="setPasscodeState('off')" style="font-size:12px; padding:6px 10px;">未入力(OFF)</button>
+        <button class="btn" id="pc-btn-on" onclick="setPasscodeState('on')" style="font-size:12px; padding:6px 10px;">入力済み(ON)</button>
+        <button class="btn active" id="pc-btn-ios" onclick="setPasscodePlatform('ios')" style="font-size:12px; padding:6px 10px;">iOS</button>
+        <button class="btn" id="pc-btn-android" onclick="setPasscodePlatform('android')" style="font-size:12px; padding:6px 10px;">Android</button>
+        <button class="btn btn-primary" onclick="animatePasscodeEntry()" style="font-size:12px; padding:6px 10px;">▶ 入力アニメ</button>
+      </div>
+      <div class="phone-mockup">
+        <div class="phone-screen">
+          <div class="phone-header" id="phone-header-title">ホーム</div>
+          <div class="phone-body" id="phone-body-content">
+            </div>
+          <div class="phone-nav" id="phone-nav-bar">
+            <div class="phone-nav-item" id="phone-nav-item-home" onclick="selectTab('home')">
+              <img id="phone-nav-img-home" src="">
+              <span>ホーム</span>
+            </div>
+            <div class="phone-nav-item" id="phone-nav-item-talk" onclick="selectTab('talk')">
+              <img id="phone-nav-img-talk" src="">
+              <span>トーク</span>
+            </div>
+            <div class="phone-nav-item" id="phone-nav-item-voom" onclick="selectTab('voom')">
+              <img id="phone-nav-img-voom" src="">
+              <span>VOOM</span>
+            </div>
+            <div class="phone-nav-item" id="phone-nav-item-call" onclick="selectTab('call')">
+              <img id="phone-nav-img-call" src="">
+              <span>通話</span>
+            </div>
+            <div class="phone-nav-item" id="phone-nav-item-wallet" onclick="selectTab('wallet')">
+              <img id="phone-nav-img-wallet" src="">
+              <span>ウォレット</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="phone-nav-extra-panel" style="margin-top:10px;">
+        <div style="font-size:11px; color:#94a3b8; margin-bottom:6px;">その他のメニューアイコン（タップでON/OFF確認）</div>
+        <div class="phone-nav-extra">
+          <div class="phone-nav-item" id="phone-nav-item-news" onclick="toggleExtraIcon('news')">
+            <img id="phone-nav-img-news" src="">
+            <span>ニュース</span>
+          </div>
+          <div class="phone-nav-item" id="phone-nav-item-today" onclick="toggleExtraIcon('today')">
+            <img id="phone-nav-img-today" src="">
+            <span>TODAY</span>
+          </div>
+          <div class="phone-nav-item" id="phone-nav-item-shopping" onclick="toggleExtraIcon('shopping')">
+            <img id="phone-nav-img-shopping" src="">
+            <span>ショップ</span>
+          </div>
+          <div class="phone-nav-item" id="phone-nav-item-app" onclick="toggleExtraIcon('app')">
+            <img id="phone-nav-img-app" src="">
+            <span>アプリ</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+
+
+<script>
+let picaInstance = null;
+try {
+  if (typeof pica !== 'undefined') {
+    picaInstance = pica();
+  }
+} catch (e) {
+  console.log("Picaの初期化に失敗しました。標準リサイズを使用します。", e);
+}
+
+// --- データ構造定義 ---
+const groups = {
+  main_all: { step: 1, label: "メイン画像 (3サイズ一括)", targets: [
+    { file: "ios_thumbnail.png", w: 200, h: 284, req: true },
+    { file: "android_thumbnail.png", w: 136, h: 202, req: true },
+    { file: "store_thumbnail.png", w: 198, h: 278, req: true }
+  ]},
+  menu_talk_off: { step: 2, label: "トーク (OFF)", targets: [{ file: "i_03.png", w: 128, h: 150, req: true }, { file: "i_03_g.png", w: 80, h: 56, req: true }] },
+  menu_talk_on: { step: 2, label: "トーク (ON)", targets: [{ file: "i_04.png", w: 128, h: 150, req: true }, { file: "i_04_g.png", w: 80, h: 56, req: true }] },
+  menu_call_off: { step: 2, label: "通話 (OFF)", targets: [{ file: "i_07.png", w: 128, h: 150, req: true }, { file: "i_07_g.png", w: 80, h: 56, req: true }] },
+  menu_call_on: { step: 2, label: "通話 (ON)", targets: [{ file: "i_08.png", w: 128, h: 150, req: true }, { file: "i_08_g.png", w: 80, h: 56, req: true }] },
+  menu_news_off: { step: 2, label: "ニュース (OFF)", targets: [{ file: "i_25.png", w: 128, h: 150, req: true }, { file: "i_25_g.png", w: 80, h: 56, req: true }] },
+  menu_news_on: { step: 2, label: "ニュース (ON)", targets: [{ file: "i_26.png", w: 128, h: 150, req: true }, { file: "i_26_g.png", w: 80, h: 56, req: true }] },
+  menu_wallet_off: { step: 2, label: "ウォレット (OFF)", targets: [{ file: "i_27.png", w: 128, h: 150, req: true }, { file: "i_27_g.png", w: 80, h: 56, req: true }] },
+  menu_wallet_on: { step: 2, label: "ウォレット (ON)", targets: [{ file: "i_28.png", w: 128, h: 150, req: true }, { file: "i_28_g.png", w: 80, h: 56, req: true }] },
+  menu_home_off: { step: 2, label: "ホーム (OFF)", targets: [{ file: "i_29.png", w: 128, h: 150, req: true }, { file: "i_29_g.png", w: 80, h: 56, req: true }] },
+  menu_home_on: { step: 2, label: "ホーム (ON)", targets: [{ file: "i_30.png", w: 128, h: 150, req: true }, { file: "i_30_g.png", w: 80, h: 56, req: true }] },
+  menu_today_off: { step: 2, label: "TODAY (OFF)", targets: [{ file: "i_31.png", w: 128, h: 150, req: true }, { file: "i_31_g.png", w: 80, h: 56, req: true }] },
+  menu_today_on: { step: 2, label: "TODAY (ON)", targets: [{ file: "i_32.png", w: 128, h: 150, req: true }, { file: "i_32_g.png", w: 80, h: 56, req: true }] },
+  menu_voom_off: { step: 2, label: "VOOM (OFF)", targets: [{ file: "i_33.png", w: 128, h: 150, req: true }, { file: "i_33_g.png", w: 80, h: 56, req: true }] },
+  menu_voom_on: { step: 2, label: "VOOM (ON)", targets: [{ file: "i_34.png", w: 128, h: 150, req: true }, { file: "i_34_g.png", w: 80, h: 56, req: true }] },
+  menu_shop_off: { step: 2, label: "ショッピング (OFF)", targets: [{ file: "i_35.png", w: 128, h: 150, req: true }, { file: "i_35_g.png", w: 80, h: 56, req: true }] },
+  menu_shop_on: { step: 2, label: "ショッピング (ON)", targets: [{ file: "i_36.png", w: 128, h: 150, req: true }, { file: "i_36_g.png", w: 80, h: 56, req: true }] },
+  menu_app_off: { step: 2, label: "アプリ (OFF)", targets: [{ file: "i_37.png", w: 128, h: 150, req: true }, { file: "i_37_g.png", w: 80, h: 56, req: true }] },
+  menu_app_on: { step: 2, label: "アプリ (ON)", targets: [{ file: "i_38.png", w: 128, h: 150, req: true }, { file: "i_38_g.png", w: 80, h: 56, req: true }] }
+};
+
+for(let i=12; i<=19; i++) {
+  const type = (i % 2 === 0) ? "OFF" : "ON";
+  const num = Math.floor((i - 12) / 2) + 1;
+  groups[`passcode_${i}`] = {
+    step: 3,
+    label: `パスコード数字${num} (${type})`,
+    targets: [
+      { file: `i_${i}.png`, w: 120, h: 120, req: true },
+      { file: `a_${i}.png`, w: 116, h: 116, req: true }
+    ]
+  };
+}
+
+groups['profile_personal'] = { step: 4, label: "プロフィール個人", targets: [{ file: "i_20.png", w: 240, h: 240, req: true }, { file: "a_20.png", w: 247, h: 247, req: true }] };
+groups['profile_group'] = { step: 4, label: "プロフィールグループ", targets: [{ file: "i_21.png", w: 240, h: 240, req: true }, { file: "a_21.png", w: 247, h: 247, req: true }] };
+groups['bg_menu'] = { step: 4, label: "メニュー背景 (任意)", targets: [{ file: "i_11.png", w: 1472, h: 150, req: false }] };
+groups['bg_talk'] = { step: 4, label: "トーク背景 (iOS/Android・任意)", targets: [
+  { file: "i_22.png", w: 1482, h: 1334, req: false, maxSizeMB: 1 },
+  { file: "a_22.png", w: 1300, h: 1300, req: false, maxSizeMB: 1 }
+] };
+
+let currentStep = 1;
+let currentGroupKey = null;
+let bulkMode = 'bulk'; 
+let cropper = null;
+let bulkSelectedIndex = null;  
+let bulkIsDragging = false;
+let bulkDragMode = 'move'; 
+let bulkDragOffset = { x: 0, y: 0, sw: 0, sh: 0, sx: 0 };
+let bgMode = 'transparent';
+let lastLoadedFile = null; 
+
+// 🔐 パスコード画面プレビュー用の状態
+let passcodeState = 'off';          // 'off' | 'on' | 'anim'
+let passcodePlatform = 'ios';       // 'ios' | 'android'
+let passcodeSlotOn = [false, false, false, false];
+let passcodeAnimTimer = null;
+
+let bulkPiecesData = []; 
+let bulkCropBoxes = [];   
+
+const imageStore = {}; 
+
+// プレビュー状態保持用
+let activeTab = 'home';
+// ニュース/TODAY/ショッピング/アプリ用（ナビバー本体には含まれないため個別にON/OFF管理）
+let extraIconState = { news: false, today: false, shopping: false, app: false };
+const extraIconMapping = {
+  news: { off: 'i_25.png', on: 'i_26.png', label: 'ニュース' },
+  today: { off: 'i_31.png', on: 'i_32.png', label: 'TODAY' },
+  shopping: { off: 'i_35.png', on: 'i_36.png', label: 'ショッピング' },
+  app: { off: 'i_37.png', on: 'i_38.png', label: 'アプリ' }
+};
+
+function toggleExtraIcon(name) {
+  extraIconState[name] = !extraIconState[name];
+  renderExtraIcons();
+}
+
+function renderExtraIcons() {
+  Object.keys(extraIconMapping).forEach(key => {
+    const isOn = extraIconState[key];
+    const fileKey = isOn ? extraIconMapping[key].on : extraIconMapping[key].off;
+    const imgEl = document.getElementById(`phone-nav-img-${key}`);
+    const itemEl = document.getElementById(`phone-nav-item-${key}`);
+    if (!imgEl || !itemEl) return;
+
+    if (imageStore[fileKey]) {
+      imgEl.src = `data:image/png;base64,${imageStore[fileKey]}`;
+      imgEl.style.display = 'block';
+      const dummy = itemEl.querySelector('.dummy-icon');
+      if (dummy) dummy.style.display = 'none';
+    } else {
+      imgEl.style.display = 'none';
+      let dummy = itemEl.querySelector('.dummy-icon');
+      if (!dummy) {
+        dummy = document.createElement('div');
+        dummy.className = 'dummy-icon';
+        itemEl.insertBefore(dummy, imgEl);
+      }
+      dummy.style.display = 'block';
+    }
+    itemEl.classList.toggle('active', isOn);
+  });
+}
+
+function togglePreviewPanel() {
+  const panel = document.getElementById('preview-sidebar');
+  if (!panel) return;
+  panel.style.display = (panel.style.display === 'none') ? 'flex' : 'none';
+}
+
+function selectTab(tabName) {
+  activeTab = tabName;
+  updateLivePreview();
+}
+
+// 📱 LINE風画面のリアルタイム書き換え処理
+function updateLivePreview() {
+  const tabs = ['home', 'talk', 'voom', 'call', 'wallet'];
+  const mapping = {
+    home: { off: 'i_29.png', on: 'i_30.png', label: 'ホーム' },
+    talk: { off: 'i_03.png', on: 'i_04.png', label: 'トーク' },
+    voom: { off: 'i_33.png', on: 'i_34.png', label: 'VOOM' },
+    call: { off: 'i_07.png', on: 'i_08.png', label: '通話' },
+    wallet: { off: 'i_27.png', on: 'i_28.png', label: 'ウォレット' }
+  };
+
+  // 1. ヘッダータイトルの更新
+  const headerEl = document.getElementById('phone-header-title');
+  if (headerEl) headerEl.innerText = mapping[activeTab].label;
+
+  // 2. メニュー背景の適用 (i_11.png)
+  const navEl = document.getElementById('phone-nav-bar');
+  if (navEl) {
+    if (imageStore['i_11.png']) {
+      navEl.style.backgroundImage = `url(data:image/png;base64,${imageStore['i_11.png']})`;
+    } else {
+      navEl.style.backgroundImage = 'none';
+      navEl.style.backgroundColor = '#ffffff';
+    }
+  }
+
+  // 3. 画面中央コンテンツの出し分け
+  const bodyEl = document.getElementById('phone-body-content');
+  if (bodyEl) {
+    if (activeTab === 'home') {
+      let avatarSrc = imageStore['i_20.png'] ? `data:image/png;base64,${imageStore['i_20.png']}` : '';
+      let avatarHtml = avatarSrc ? `<img src="${avatarSrc}" class="phone-avatar">` : `<div class="phone-avatar"></div>`;
+
+      // プロフィール画像(個人/グループ)が未設定の友だち・グループに表示されるデフォルト画像を反映
+      const personalSrc = imageStore['i_20.png'] ? `data:image/png;base64,${imageStore['i_20.png']}` : '';
+      const groupSrc = imageStore['i_21.png'] ? `data:image/png;base64,${imageStore['i_21.png']}` : '';
+      const personalAvatarHtml = personalSrc ? `<img src="${personalSrc}" class="phone-avatar-sm">` : `<div class="phone-avatar-sm"></div>`;
+      const groupAvatarHtml = groupSrc ? `<img src="${groupSrc}" class="phone-avatar-sm">` : `<div class="phone-avatar-sm"></div>`;
+
+      bodyEl.style.backgroundImage = 'none';
+      bodyEl.style.backgroundColor = '#ffffff';
+      bodyEl.innerHTML = `
+        <div class="phone-profile">
+          ${avatarHtml}
+          <div style="display:flex; flex-direction:column;">
+            <span class="phone-username">ブクシー (本の妖精)</span>
+            <span style="font-size:10px; color:#64748b; margin-top:2px;">着せ替え制作中！</span>
+          </div>
+        </div>
+        <div style="margin-top:12px; font-size:11px; font-weight:bold; color:#64748b; padding:0 2px;">お気に入り友達</div>
+        <div class="phone-dummy-list">
+          <div class="phone-dummy-item-user" style="display:flex; align-items:center; gap:8px; padding:0 8px; font-size:11px; color:#334155;">${personalAvatarHtml}<span>ジジ (歯車妖精)</span></div>
+          <div class="phone-dummy-item-user" style="display:flex; align-items:center; gap:8px; padding:0 8px; font-size:11px; color:#334155;">${personalAvatarHtml}<span>さくらひよこ</span></div>
+          <div class="phone-dummy-item-user" style="display:flex; align-items:center; gap:8px; padding:0 8px; font-size:11px; color:#334155;">${personalAvatarHtml}<span>たぬき</span></div>
+        </div>
+        <div style="margin-top:12px; font-size:11px; font-weight:bold; color:#64748b; padding:0 2px;">グループ</div>
+        <div class="phone-dummy-list">
+          <div class="phone-dummy-item-user" style="display:flex; align-items:center; gap:8px; padding:0 8px; font-size:11px; color:#334155;">${groupAvatarHtml}<span>本好きの会</span></div>
+        </div>
+      `;
+    } else if (activeTab === 'talk') {
+      // トーク背景 (i_22.png) の反映
+      if (imageStore['i_22.png']) {
+        bodyEl.style.backgroundImage = `url(data:image/png;base64,${imageStore['i_22.png']})`;
+        bodyEl.style.backgroundSize = 'cover';
+        bodyEl.style.backgroundPosition = 'center';
+      } else {
+        bodyEl.style.backgroundImage = 'none';
+        bodyEl.style.backgroundColor = '#7494c4'; // LINE標準風の青背景
+      }
+      bodyEl.innerHTML = `
+        <div class="chat-bubble left">こんにちは！新しく作ったメニューアイコンのテストはどう？</div>
+        <div class="chat-bubble right">すごくいい感じ！下のメニューを叩くとONとOFFがパッと切り替わるよ！</div>
+        <div class="chat-bubble left">本当だ！背景画像(i_22)も同時に確認できて便利だね✨</div>
+      `;
+    } else {
+      bodyEl.style.backgroundImage = 'none';
+      bodyEl.style.backgroundColor = '#ffffff';
+      bodyEl.innerHTML = `
+        <div style="text-align:center; color:#94a3b8; margin-top:60px; font-size:12px;">
+          ${mapping[activeTab].label}画面の表示サンプル
+        </div>
+      `;
+    }
+  }
+
+  // 4. ナビゲーションアイコン（ON/OFF画像）の動的反映
+  tabs.forEach(tab => {
+    const isImgActive = (tab === activeTab);
+    const fileKey = isImgActive ? mapping[tab].on : mapping[tab].off;
+    const imgEl = document.getElementById(`phone-nav-img-${tab}`);
+    const itemEl = document.getElementById(`phone-nav-item-${tab}`);
+
+    if (imgEl && itemEl) {
+      if (imageStore[fileKey]) {
+        imgEl.src = `data:image/png;base64,${imageStore[fileKey]}`;
+        imgEl.style.display = 'block';
+        const dummy = itemEl.querySelector('.dummy-icon');
+        if (dummy) dummy.style.display = 'none';
+      } else {
+        imgEl.style.display = 'none';
+        let dummy = itemEl.querySelector('.dummy-icon');
+        if (!dummy) {
+          dummy = document.createElement('div');
+          dummy.className = 'dummy-icon';
+          itemEl.insertBefore(dummy, imgEl);
+        }
+        dummy.style.display = 'block';
+      }
+      itemEl.classList.toggle('active', isImgActive);
+    }
+  });
+
+  renderExtraIcons();
+}
+
+// 🔐 パスコード画面プレビュー
+// LINEのパスコード画面は「4つの入力枠(未入力=OFF/入力済み=ON)」＋「固定デザインのテンキー」で構成される。
+// 枠の画像は i_12〜i_19 (iOS) / a_12〜a_19 (Android) で、各桁ごとに OFF/ON の2種類。
+function passcodeFileFor(slotIndex, isOn) {
+  // slotIndex: 1〜4
+  const num = (isOn ? 11 : 10) + slotIndex * 2;
+  const prefix = passcodePlatform === 'ios' ? 'i_' : 'a_';
+  return `${prefix}${num}.png`;
+}
+
+// ステップ3の間だけ、右側の実機風プレビューをパスコード画面に差し替える
+function renderPasscodeInSidebar() {
+  const headerEl = document.getElementById('phone-header-title');
+  if (headerEl) headerEl.innerText = 'パスコード';
+
+  const bodyEl = document.getElementById('phone-body-content');
+  if (!bodyEl) return;
+  bodyEl.style.backgroundImage = 'none';
+  bodyEl.style.backgroundColor = '#ffffff';
+  bodyEl.innerHTML = `
+    <div style="text-align:center; font-size:11px; color:#64748b; margin-top:6px;">パスコードを入力してください</div>
+    <div class="passcode-slots" id="passcode-slots" style="justify-content:center;"></div>
+    <div class="passcode-keypad" id="passcode-keypad"></div>
+  `;
+  renderPasscodePreview();
+}
+
+function setPasscodeState(state) {
+  if (passcodeAnimTimer) { clearInterval(passcodeAnimTimer); passcodeAnimTimer = null; }
+  passcodeState = state;
+  document.getElementById('pc-btn-off').classList.toggle('active', state === 'off');
+  document.getElementById('pc-btn-on').classList.toggle('active', state === 'on');
+  renderPasscodePreview();
+}
+
+function setPasscodePlatform(platform) {
+  passcodePlatform = platform;
+  document.getElementById('pc-btn-ios').classList.toggle('active', platform === 'ios');
+  document.getElementById('pc-btn-android').classList.toggle('active', platform === 'android');
+  renderPasscodePreview();
+}
+
+function renderPasscodePreview() {
+  const slotsEl = document.getElementById('passcode-slots');
+  if (!slotsEl) return; // ステップ3以外では要素が無い/非表示のためスキップ
+
+  slotsEl.innerHTML = '';
+  for (let i = 1; i <= 4; i++) {
+    const isOn = passcodeState === 'anim' ? passcodeSlotOn[i - 1] : (passcodeState === 'on');
+    const filename = passcodeFileFor(i, isOn);
+    const base64 = imageStore[filename];
+
+    const slot = document.createElement('div');
+    slot.className = 'passcode-slot';
+    slot.innerHTML = base64
+      ? `<img src="data:image/png;base64,${base64}">`
+      : `<span style="font-size:9px;color:#cbd5e1;">${i}</span>`;
+    slotsEl.appendChild(slot);
+  }
+
+  // テンキーはLINE側で固定デザインのため、参考として汎用の見た目のみ表示
+  const keypad = document.getElementById('passcode-keypad');
+  if (keypad && keypad.children.length === 0) {
+    ['1','2','3','4','5','6','7','8','9','','0','⌫'].forEach(k => {
+      const key = document.createElement('div');
+      key.className = 'passcode-key' + (k === '' ? ' empty' : '');
+      key.innerText = k;
+      keypad.appendChild(key);
+    });
+  }
+}
+
+function animatePasscodeEntry() {
+  if (passcodeAnimTimer) clearInterval(passcodeAnimTimer);
+  passcodeState = 'anim';
+  passcodeSlotOn = [false, false, false, false];
+  document.getElementById('pc-btn-off').classList.remove('active');
+  document.getElementById('pc-btn-on').classList.remove('active');
+  renderPasscodePreview();
+
+  let i = 0;
+  passcodeAnimTimer = setInterval(() => {
+    if (i < 4) {
+      passcodeSlotOn[i] = true;
+      renderPasscodePreview();
+      i++;
+    } else {
+      clearInterval(passcodeAnimTimer);
+      passcodeAnimTimer = null;
+      setTimeout(() => setPasscodeState('off'), 700);
+    }
+  }, 400);
+}
+
+function saveToLocalStorage() {
+  try {
+    localStorage.setItem('line_theme_backup', JSON.stringify(imageStore));
+  } catch (e) {
+    console.error("オートセーブに失敗しました(容量オーバーの可能性があります)", e);
+  }
+}
+
+function clearAllData() {
+  if (confirm("【警告】保存されているすべての画像データと作成状況を削除して初期化します。よろしいですか？")) {
+    localStorage.removeItem('line_theme_backup');
+    for (const key in imageStore) delete imageStore[key];
+    updateProgressBar();
+    updateLivePreview();
+    if(currentStep === 5) renderFinalCheck(); else {
+      if((currentStep === 2 || currentStep === 3) && bulkMode === 'bulk') switchBulkMode('bulk');
+      else selectGroup(currentGroupKey);
+    }
+    alert("初期化しました。");
+  }
+}
+
+function init() {
+  const backup = localStorage.getItem('line_theme_backup');
+  if (backup) {
+    try {
+      const parsed = JSON.parse(backup);
+      Object.assign(imageStore, parsed);
+      console.log("前回のデータを自動復元しました。");
+    } catch(e) {
+      console.error("バックアップデータの復元に失敗しました", e);
+    }
+  }
+  switchStep(1);
+  updateProgressBar();
+  updateLivePreview();
+}
+
+function resetBulkView() {
+  document.getElementById('bulk-pieces-container').innerHTML = '';
+  document.getElementById('bulk-pieces-container').style.display = 'none';
+  document.getElementById('bulk-submit-bar').style.display = 'none';
+  document.getElementById('bulk-overlay-section').style.display = 'none';
+  document.getElementById('bulk-setup-area').style.display = 'flex';
+  document.getElementById('bulk-reset-area').style.display = 'none';
+  document.getElementById('bulk-action-bar').style.display = 'none';
+  document.getElementById('bulk-img-preview-wrap').style.display = 'none';
+  document.getElementById('bulk-drop-hint').style.display = 'block';
+  document.getElementById('bulk-source-img').src = '';
+  document.getElementById('bulkImageLoader').value = '';
+  bulkPiecesData = [];
+  bulkCropBoxes = [];
+  bulkSelectedIndex = null;
+}
+
+function showBulkSetup() {
+  document.getElementById('bulk-setup-area').style.display = 'flex';
+  document.getElementById('bulk-reset-area').style.display = 'none';
+  document.getElementById('bulk-pieces-container').innerHTML = '';
+  document.getElementById('bulk-pieces-container').style.display = 'none';
+  document.getElementById('bulk-submit-bar').style.display = 'none';
+  document.getElementById('bulk-overlay-section').style.display = 'none';
+  document.getElementById('bulk-action-bar').style.display = 'none';
+  document.getElementById('bulk-img-preview-wrap').style.display = 'none';
+  document.getElementById('bulk-drop-hint').style.display = 'block';
+  document.getElementById('bulk-source-img').src = '';
+  document.getElementById('bulkImageLoader').value = '';
+  bulkPiecesData = [];
+  bulkCropBoxes = [];
+  bulkSelectedIndex = null;
+}
+
+function switchStep(stepNum) {
+  currentStep = stepNum;
+  document.querySelectorAll('.step-tab').forEach((tab, index) => {
+    tab.classList.toggle('active', index + 1 === stepNum);
+  });
+
+  const canBulk = (stepNum === 2 || stepNum === 3);
+  document.getElementById('bulk-mode-selector').style.display = canBulk ? 'flex' : 'none';
+
+  const isPasscodeStep = (stepNum === 3);
+  document.getElementById('passcode-toggle-bar').style.display = isPasscodeStep ? 'flex' : 'none';
+  document.getElementById('phone-nav-bar').style.display = isPasscodeStep ? 'none' : 'flex';
+  document.getElementById('phone-nav-extra-panel').style.display = isPasscodeStep ? 'none' : 'block';
+  document.getElementById('preview-sidebar-hint').style.display = isPasscodeStep ? 'none' : 'inline';
+  document.getElementById('preview-sidebar-title').innerText = isPasscodeStep ? '📱 パスコード画面プレビュー' : '📱 着せ替え実機風プレビュー';
+  if (isPasscodeStep) {
+    renderPasscodeInSidebar();
+  } else {
+    updateLivePreview();
+  }
+
+  if (stepNum === 5) {
+    document.getElementById('editor-view').style.display = 'none';
+    document.getElementById('bulk-view').style.display = 'none';
+    document.getElementById('final-view').style.display = 'grid';
+    renderFinalCheck();
+  } else if (canBulk) {
+    document.getElementById('final-view').style.display = 'none';
+    if (stepNum === 2) {
+      document.getElementById('bulk-view-title').innerText = "✨ メニュー画像シート 透過自動トリミング分割";
+    } else {
+      document.getElementById('bulk-view-title').innerText = "✨ パスコード画像シート 透過自動トリミング分割";
+    }
+    resetBulkView();
+    switchBulkMode(bulkMode);
+    renderSidebarList();
+  } else {
+    document.getElementById('editor-view').style.display = 'flex';
+    document.getElementById('bulk-view').style.display = 'none';
+    document.getElementById('final-view').style.display = 'none';
+    renderSidebarList();
+    const firstGroup = Object.keys(groups).find(key => groups[key].step === stepNum);
+    if(firstGroup) selectGroup(firstGroup);
+  }
+}
+
+function switchBulkMode(mode) {
+  bulkMode = mode;
+  document.getElementById('btn-mode-single').classList.toggle('active', mode === 'single');
+  document.getElementById('btn-mode-bulk').classList.toggle('active', mode === 'bulk');
+  
+  if (currentStep === 2 || currentStep === 3) {
+    if (mode === 'single') {
+      document.getElementById('editor-view').style.display = 'flex';
+      document.getElementById('bulk-view').style.display = 'none';
+      const firstGroup = Object.keys(groups).find(key => groups[key].step === currentStep);
+      if(firstGroup) selectGroup(firstGroup);
+    } else {
+      document.getElementById('editor-view').style.display = 'none';
+      document.getElementById('bulk-view').style.display = 'flex';
+      currentGroupKey = null;
+      renderSidebarList();
+    }
+  }
+}
+
+function renderSidebarList() {
+  const sidebar = document.getElementById('sidebar-list');
+  sidebar.innerHTML = '';
+  
+  Object.keys(groups).forEach(key => {
+    const g = groups[key];
+    if (g.step !== currentStep) return;
+    
+    const isCompleted = g.targets.every(t => imageStore[t.file]);
+
+    const div = document.createElement('div');
+    div.className = `group-item ${key === currentGroupKey ? 'active' : ''} ${isCompleted ? 'completed' : ''}`;
+    div.onclick = () => {
+      if((currentStep === 2 || currentStep === 3) && bulkMode === 'bulk') {
+        switchBulkMode('single'); 
+      }
+      selectGroup(key);
+    };
+    div.innerHTML = `
+      <span>${g.label}</span>
+      <span class="badge">${isCompleted ? '✓ 完了' : g.targets.length + '枚出力'}</span>
+    `;
+    sidebar.appendChild(div);
+  });
+}
+
+function selectGroup(key) {
+  currentGroupKey = key;
+  renderSidebarList();
+
+  const g = groups[key];
+  document.getElementById('current-group-title').innerText = `${g.label} の編集・切り抜き`;
+  
+  if(cropper) {
+    cropper.destroy();
+    cropper = null;
+  }
+  document.getElementById('cropper-wrapper').style.display = 'none';
+  document.getElementById('drop-hint').style.display = 'block';
+  document.getElementById('btn-generate').disabled = true;
+  
+  if (lastLoadedFile) {
+    setupCropper(lastLoadedFile);
+  }
+
+  renderPreviews();
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  const file = e.dataTransfer.files[0];
+  if (file) { lastLoadedFile = file; loadImage(file); }
+}
+function handleDropZoneClick(e) {
+  if (!cropper) document.getElementById('imageLoader').click();
+}
+function handleFileSelect(input) {
+  const file = input.files[0];
+  if (file) { lastLoadedFile = file; loadImage(file); }
+  input.value = ''; 
+}
+function loadImage(file) {
+  const reader = new FileReader();
+  reader.onload = function(e) { setupCropper(e.target.result); };
+  reader.readAsDataURL(file);
+}
+function setupCropper(imageSrc) {
+  document.getElementById('drop-hint').style.display = 'none';
+  const wrapper = document.getElementById('cropper-wrapper');
+  wrapper.style.display = 'block';
+  
+  const img = document.getElementById('cropper-target');
+  img.src = imageSrc;
+
+  if (cropper) cropper.destroy();
+
+  const g = groups[currentGroupKey];
+  const targetAspect = g.targets[0].w / g.targets[0].h;
+
+  cropper = new Cropper(img, {
+    viewMode: 1,
+    dragMode: 'move',
+    aspectRatio: targetAspect, 
+    autoCropArea: 0.9,
+    restore: false,
+    guides: true,
+    center: true,
+    highlight: false,
+    cropBoxMovable: true,
+    cropBoxResizable: true,
+    toggleDragModeOnDblclick: false
+  });
+  
+  document.getElementById('btn-generate').disabled = false;
+}
+
+function handleBulkDrop(e) {
+  e.preventDefault();
+  const file = e.dataTransfer.files[0];
+  if (file) { loadBulkImage(file); }
+}
+function handleBulkDropZoneClick(e) {
+  if(document.getElementById('bulk-img-preview-wrap').style.display === 'none') {
+    document.getElementById('bulkImageLoader').click();
+  }
+}
+function handleBulkFileSelect(input) {
+  const file = input.files[0];
+  if (file) { loadBulkImage(file); }
+  input.value = ''; 
+}
+function loadBulkImage(file) {
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const img = document.getElementById('bulk-source-img');
+    img.src = e.target.result;
+    img.onload = function() {
+      document.getElementById('bulk-drop-hint').style.display = 'none';
+      document.getElementById('bulk-img-preview-wrap').style.display = 'block';
+      document.getElementById('bulk-action-bar').style.display = 'flex';
+    };
+  };
+  reader.readAsDataURL(file);
+}
+
+function detectSheetRegions(img, ratio) {
+  const w = img.naturalWidth, h = img.naturalHeight;
+  const ac = document.createElement('canvas'), actx = ac.getContext('2d');
+  ac.width = w; ac.height = h;
+  actx.drawImage(img, 0, 0);
+  const data = actx.getImageData(0, 0, w, h).data;
+  const isOpaque = (x, y) => data[((y * w + x) * 4) + 3] >= 20;
+
+  const rowHasContent = [];
+  for (let y = 0; y < h; y++) {
+    let found = false;
+    for (let x = 0; x < w; x++) { if (isOpaque(x, y)) { found = true; break; } }
+    rowHasContent.push(found);
+  }
+  const bandsY = [];
+  let sY = -1;
+  for (let y = 0; y < h; y++) {
+    if (rowHasContent[y] && sY === -1) sY = y;
+    else if (!rowHasContent[y] && sY !== -1) { bandsY.push({ y: sY, h: y - sY }); sY = -1; }
+  }
+  if (sY !== -1) bandsY.push({ y: sY, h: h - sY });
+
+  const boxes = [];
+  bandsY.forEach(band => {
+    const colHasContent = [];
+    for (let x = 0; x < w; x++) {
+      let found = false;
+      for (let y = band.y; y < band.y + band.h; y++) { if (isOpaque(x, y)) { found = true; break; } }
+      colHasContent.push(found);
+    }
+    let sX = -1;
+    for (let x = 0; x < w; x++) {
+      if (colHasContent[x] && sX === -1) sX = x;
+      else if (!colHasContent[x] && sX !== -1) { addDetectedBox(sX, band.y, x - sX, band.h, boxes, w, h, ratio); sX = -1; }
+    }
+    if (sX !== -1) addDetectedBox(sX, band.y, w - sX, band.h, boxes, w, h, ratio);
+  });
+  return boxes;
+}
+
+function addDetectedBox(startX, startY, ow, oh, arr, imgW, imgH, ratio) {
+  const padding = 2;
+  const paddedW = ow + padding * 2;
+  const paddedH = oh + padding * 2;
+  let bw, bh;
+  if (paddedW / paddedH > ratio) { bw = paddedW; bh = paddedW / ratio; }
+  else { bh = paddedH; bw = paddedH * ratio; }
+  let sx = startX - padding - (bw - paddedW) / 2;
+  let sy = startY - padding - (bh - paddedH) / 2;
+  if (bw > imgW) { bw = imgW; sx = 0; bh = bw / ratio; }
+  if (bh > imgH) { bh = imgH; sy = 0; bw = bh * ratio; }
+  sx = Math.max(0, Math.min(sx, imgW - bw));
+  sy = Math.max(0, Math.min(sy, imgH - bh));
+  arr.push({ x: sx, y: sy, width: bw, height: bh });
+}
+
+function cropSheetToDataUrl(img, box) {
+  const c = document.createElement('canvas');
+  c.width = box.width; c.height = box.height;
+  c.getContext('2d').drawImage(img, box.x, box.y, box.width, box.height, 0, 0, box.width, box.height);
+  return c.toDataURL('image/png');
+}
+
+function processBulkSplit() {
+  const img = document.getElementById('bulk-source-img');
+  if (!img.src || img.src === "") return;
+
+  document.getElementById('bulk-setup-area').style.display = 'none';
+  document.getElementById('bulk-reset-area').style.display = 'block';
+
+  const container = document.getElementById('bulk-pieces-container');
+  container.innerHTML = '';
+  container.style.display = 'grid';
+
+  bulkPiecesData = [];
+  bulkCropBoxes = [];
+
+  const targetKeys = Object.keys(groups).filter(k => groups[k].step === currentStep);
+  const firstTarget = targetKeys.length > 0 ? groups[targetKeys[0]].targets[0] : { w: 1, h: 1 };
+  const ratio = firstTarget.w / firstTarget.h;
+
+  const boxes = detectSheetRegions(img, ratio);
+
+  if (boxes.length === 0) {
+    container.innerHTML = '<p style="color:#ef4444; font-weight:bold; padding:20px; margin:0;">⚠️ 透明な余白で区切られた領域を検出できませんでした。画像の背景が透過(PNG)になっているかご確認ください。</p>';
+    document.getElementById('bulk-submit-bar').style.display = 'none';
+    document.getElementById('bulk-overlay-section').style.display = 'none';
+    return;
+  }
+
+  bulkSelectedIndex = null;
+  document.getElementById('bulk-overlay-section').style.display = 'flex';
+
+  boxes.forEach((box, index) => {
+    const finalDataUrl = cropSheetToDataUrl(img, box);
+
+    bulkPiecesData.push(finalDataUrl);
+    bulkCropBoxes.push(box); 
+
+    const card = document.createElement('div');
+    card.className = 'preview-card';
+    card.style.display = 'flex';
+    card.style.flexDirection = 'column';
+    card.style.gap = '8px';
+    card.style.padding = '10px';
+
+    const imgWrap = document.createElement('div');
+    imgWrap.className = `preview-img-wrap preview-bg-check bg-mode-${bgMode}`;
+    imgWrap.style.minHeight = '100px';
+    imgWrap.style.height = '100px';
+    imgWrap.style.padding = '5px';
+    imgWrap.innerHTML = `<img id="bulk-img-preview-${index}" src="${finalDataUrl}" style="max-height:90px; max-width:100%; object-fit:contain;">`;
+
+    const actionWrap = document.createElement('div');
+    actionWrap.style.display = 'flex';
+    actionWrap.style.justifyContent = 'space-between';
+    actionWrap.style.alignItems = 'center';
+
+    const label = document.createElement('div');
+    label.innerText = `検出領域 #${index + 1}`;
+    label.style.fontSize = '12px';
+    label.style.color = '#4a5568';
+    label.style.fontWeight = 'bold';
+
+    const adjBtn = document.createElement('button');
+    adjBtn.className = 'btn';
+    adjBtn.style.padding = '3px 6px';
+    adjBtn.style.fontSize = '11px';
+    adjBtn.style.borderColor = 'var(--primary-color)';
+    adjBtn.style.color = 'var(--primary-color)';
+    adjBtn.innerText = '🎯 枠を選択';
+
+    const currentIndex = index;
+    adjBtn.onclick = (e) => { e.stopPropagation(); selectBulkBox(currentIndex); };
+
+    actionWrap.appendChild(label);
+    actionWrap.appendChild(adjBtn);
+
+    const select = document.createElement('select');
+    select.style.width = '100%';
+    select.style.fontSize = '12px';
+    select.style.padding = '4px';
+    select.style.borderRadius = '4px';
+    select.style.border = '1px solid var(--border-color)';
+
+    const optNone = document.createElement('option');
+    optNone.value = '';
+    optNone.innerText = '⚠️ 割り当てない';
+    select.appendChild(optNone);
+
+    targetKeys.forEach(key => {
+      const opt = document.createElement('option');
+      opt.value = key;
+      opt.innerText = groups[key].label;
+      select.appendChild(opt);
+    });
+
+    select.value = index < targetKeys.length ? targetKeys[index] : '';
+
+    card.appendChild(imgWrap);
+    card.appendChild(actionWrap);
+    card.appendChild(select);
+    container.appendChild(card);
+  });
+
+  if (boxes.length !== targetKeys.length) {
+    const notice = document.createElement('p');
+    notice.style.cssText = 'color:#d97706; font-size:12px; font-weight:bold; grid-column:1/-1; margin:0 0 4px;';
+    notice.innerText = `⚠️ 検出領域数(${boxes.length})と必要枚数(${targetKeys.length})が一致していません。各カードの割り当て先を確認してください。`;
+    container.prepend(notice);
+  }
+
+  document.getElementById('bulk-submit-bar').style.display = 'block';
+  renderBulkOverlay();
+}
+
+function getBulkRatio() {
+  const targetKeys = Object.keys(groups).filter(k => groups[k].step === currentStep);
+  const firstTarget = targetKeys.length > 0 ? groups[targetKeys[0]].targets[0] : { w: 1, h: 1 };
+  return firstTarget.w / firstTarget.h;
+}
+
+function renderBulkOverlay() {
+  const canvas = document.getElementById('bulk-overlay-canvas');
+  const sheetImg = document.getElementById('bulk-source-img');
+  if (!canvas || !sheetImg || !sheetImg.naturalWidth) return;
+
+  canvas.width = sheetImg.naturalWidth;
+  canvas.height = sheetImg.naturalHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(sheetImg, 0, 0);
+
+  const lineW = Math.max(2, canvas.width * 0.0025);
+  bulkCropBoxes.forEach((b, i) => {
+    if (!b) return;
+    const isSel = bulkSelectedIndex === i;
+    ctx.lineWidth = lineW;
+    ctx.strokeStyle = isSel ? '#ff007b' : '#3b82f6';
+    ctx.strokeRect(b.x, b.y, b.width, b.height);
+
+    const labelH = Math.max(16, canvas.width * 0.014);
+    const label = `#${i + 1}`;
+    ctx.font = `bold ${labelH}px sans-serif`;
+    const labelW = ctx.measureText(label).width + 8;
+    ctx.fillStyle = isSel ? '#ff007b' : '#3b82f6';
+    ctx.fillRect(b.x, b.y, labelW, labelH + 4);
+    ctx.fillStyle = '#fff';
+    ctx.fillText(label, b.x + 4, b.y + labelH);
+
+    if (isSel) {
+      ctx.fillStyle = '#ff007b';
+      const handleSize = Math.max(16, canvas.width * 0.02);
+      ctx.fillRect(b.x + b.width - handleSize, b.y + b.height - handleSize, handleSize, handleSize);
+    }
+  });
+}
+
+function getBulkCanvasPos(e) {
+  const canvas = document.getElementById('bulk-overlay-canvas');
+  const rect = canvas.getBoundingClientRect();
+  const pos = e.touches ? e.touches[0] : e;
+  return {
+    px: (pos.clientX - rect.left) * (canvas.width / rect.width),
+    py: (pos.clientY - rect.top) * (canvas.height / rect.height)
+  };
+}
+
+function onBulkCanvasStart(e) {
+  if (bulkCropBoxes.length === 0) return;
+  const { px, py } = getBulkCanvasPos(e);
+  let hitIndex = null;
+  for (let i = bulkCropBoxes.length - 1; i >= 0; i--) {
+    const b = bulkCropBoxes[i];
+    if (b && px > b.x && px < b.x + b.width && py > b.y && py < b.y + b.height) { hitIndex = i; break; }
+  }
+  if (hitIndex === null) {
+    bulkSelectedIndex = null;
+    renderBulkOverlay();
+    highlightBulkCard(null);
+    return;
+  }
+  if (e.cancelable) e.preventDefault();
+  bulkSelectedIndex = hitIndex;
+  const b = bulkCropBoxes[hitIndex];
+  const canvas = document.getElementById('bulk-overlay-canvas');
+  const handleArea = Math.max(e.touches ? 40 : 24, canvas.width * 0.025);
+  bulkDragMode = (px > b.x + b.width - handleArea && py > b.y + b.height - handleArea) ? 'resize' : 'move';
+  bulkDragOffset = { x: px - b.x, y: py - b.y, sw: b.width, sh: b.height, sx: px };
+  bulkIsDragging = true;
+  renderBulkOverlay();
+  highlightBulkCard(hitIndex);
+}
+
+function onBulkCanvasMove(e) {
+  if (!bulkIsDragging || bulkSelectedIndex === null) return;
+  if (e.cancelable) e.preventDefault();
+  const { px, py } = getBulkCanvasPos(e);
+  const b = bulkCropBoxes[bulkSelectedIndex];
+  const canvas = document.getElementById('bulk-overlay-canvas');
+
+  if (bulkDragMode === 'move') {
+    b.x = Math.max(0, Math.min(px - bulkDragOffset.x, canvas.width - b.width));
+    b.y = Math.max(0, Math.min(py - bulkDragOffset.y, canvas.height - b.height));
+  } else {
+    const ratio = getBulkRatio();
+    let newW = Math.max(20, bulkDragOffset.sw + (px - bulkDragOffset.sx));
+    newW = Math.min(newW, canvas.width - b.x);
+    let newH = newW / ratio;
+    if (b.y + newH > canvas.height) { newH = canvas.height - b.y; newW = newH * ratio; }
+    b.width = newW;
+    b.height = newH;
+  }
+  renderBulkOverlay();
+}
+
+function onBulkCanvasEnd() {
+  if (!bulkIsDragging) return;
+  bulkIsDragging = false;
+  if (bulkSelectedIndex !== null) syncBulkPiece(bulkSelectedIndex);
+}
+
+function syncBulkPiece(index) {
+  const box = bulkCropBoxes[index];
+  const sheetImg = document.getElementById('bulk-source-img');
+  if (!box || !sheetImg) return;
+  const dataUrl = cropSheetToDataUrl(sheetImg, box);
+  bulkPiecesData[index] = dataUrl;
+  const previewImg = document.getElementById(`bulk-img-preview-${index}`);
+  if (previewImg) previewImg.src = dataUrl;
+}
+
+function highlightBulkCard(index) {
+  const container = document.getElementById('bulk-pieces-container');
+  if (!container) return;
+  Array.from(container.querySelectorAll('.preview-card')).forEach((card, i) => {
+    card.style.outline = (index !== null && i === index) ? '3px solid #ff007b' : 'none';
+    card.style.outlineOffset = '2px';
+  });
+}
+
+function selectBulkBox(index) {
+  bulkSelectedIndex = index;
+  renderBulkOverlay();
+  highlightBulkCard(index);
+  const wrap = document.getElementById('bulk-overlay-wrap');
+  if (wrap) wrap.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+(function initBulkOverlayEvents() {
+  const canvas = document.getElementById('bulk-overlay-canvas');
+  if (!canvas) return;
+  canvas.addEventListener('mousedown', onBulkCanvasStart);
+  canvas.addEventListener('touchstart', onBulkCanvasStart, { passive: false });
+  window.addEventListener('mousemove', onBulkCanvasMove);
+  window.addEventListener('touchmove', onBulkCanvasMove, { passive: false });
+  window.addEventListener('mouseup', onBulkCanvasEnd);
+  window.addEventListener('touchend', onBulkCanvasEnd);
+})();
+
+async function applyBulkImagesToStore() {
+  if (bulkPiecesData.length === 0) return;
+
+  const container = document.getElementById('bulk-pieces-container');
+  const cards = container.querySelectorAll('.preview-card');
+  const stepName = currentStep === 2 ? "メニューボタン" : "パスコード";
+
+  if(!confirm(`調整・割り当て済みの設定に基づいて、全${stepName}画像を一括自動生成・リサイズします。よろしいですか？`)) return;
+
+  for (let i = 0; i < cards.length; i++) {
+    const card = cards[i];
+    const select = card.querySelector('select');
+    const groupKey = select.value;
+    if (!groupKey) continue; 
+
+    const dataUrl = bulkPiecesData[i];
+    const pieceImg = await new Promise((resolve) => {
+      const im = new Image();
+      im.src = dataUrl;
+      im.onload = () => resolve(im);
+    });
+
+    const g = groups[groupKey];
+
+    for (const target of g.targets) {
+      const destCanvas = document.createElement('canvas');
+      destCanvas.width = target.w;
+      destCanvas.height = target.h;
+      const ctx = destCanvas.getContext('2d');
+      ctx.clearRect(0, 0, target.w, target.h);
+
+      const ratio = Math.min(target.w / pieceImg.width, target.h / pieceImg.height);
+      const nw = Math.floor(pieceImg.width * ratio);
+      const nh = Math.floor(pieceImg.height * ratio);
+      const tx = Math.floor((target.w - nw) / 2);
+      const ty = Math.floor((target.h - nh) / 2);
+
+      if (picaInstance) {
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = nw;
+        tempCanvas.height = nh;
+        await picaInstance.resize(pieceImg, tempCanvas, { features: ['js', 'wasm', 'ww'] });
+        ctx.drawImage(tempCanvas, tx, ty, nw, nh);
+      } else {
+        ctx.drawImage(pieceImg, 0, 0, pieceImg.width, pieceImg.height, tx, ty, nw, nh);
+      }
+
+      const outUrl = destCanvas.toDataURL('image/png');
+      imageStore[target.file] = outUrl.split(',')[1];
+    }
+  }
+
+  updateProgressBar();
+  saveToLocalStorage();
+  renderSidebarList();
+  updateLivePreview();
+  alert(`✨ 全${stepName}画像への一括生成・リサイズが完了しました！`);
+}
+
+async function generateDerivedImages() {
+  if (!cropper || !currentGroupKey) return;
+  
+  const g = groups[currentGroupKey];
+  const croppedCanvas = cropper.getCroppedCanvas();
+  
+  for (const target of g.targets) {
+    const destCanvas = document.createElement('canvas');
+    destCanvas.width = target.w;
+    destCanvas.height = target.h;
+    const ctx = destCanvas.getContext('2d');
+    ctx.clearRect(0, 0, target.w, target.h);
+
+    const ratio = Math.max(target.w / croppedCanvas.width, target.h / croppedCanvas.height);
+    const nw = Math.floor(croppedCanvas.width * ratio);
+    const nh = Math.floor(croppedCanvas.height * ratio);
+    const tx = Math.floor((target.w - nw) / 2);
+    const ty = Math.floor((target.h - nh) / 2);
+
+    if (picaInstance) {
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = nw;
+      tempCanvas.height = nh;
+      await picaInstance.resize(croppedCanvas, tempCanvas, { features: ['js', 'wasm', 'ww'] });
+      ctx.drawImage(tempCanvas, tx, ty, nw, nh);
+    } else {
+      ctx.drawImage(croppedCanvas, tx, ty, nw, nh);
+    }
+    
+    if (target.maxSizeMB) {
+      imageStore[target.file] = await canvasToSizedPngBase64(destCanvas, target.maxSizeMB * 1024 * 1024);
+    } else {
+      const dataUrl = destCanvas.toDataURL('image/png');
+      imageStore[target.file] = dataUrl.split(',')[1];
+    }
+  }
+
+  updateProgressBar();
+  saveToLocalStorage(); 
+  renderSidebarList();
+  renderPreviews();
+  updateLivePreview();
+}
+
+function estimatePngBytes(dataUrl) {
+  const base64Len = dataUrl.length - dataUrl.indexOf(',') - 1;
+  return Math.ceil(base64Len * 3 / 4);
+}
+
+async function canvasToSizedPngBase64(canvas, maxBytes) {
+  let dataUrl = canvas.toDataURL('image/png');
+  if (!maxBytes || estimatePngBytes(dataUrl) <= maxBytes) {
+    return dataUrl.split(',')[1];
+  }
+
+  let sourceCanvas = canvas;
+  for (let quality = 0.92; quality >= 0.15; quality -= 0.12) {
+    const jpegUrl = sourceCanvas.toDataURL('image/jpeg', quality);
+    const img = await new Promise((resolve) => {
+      const im = new Image();
+      im.onload = () => resolve(im);
+      im.src = jpegUrl;
+    });
+    const tmp = document.createElement('canvas');
+    tmp.width = canvas.width;
+    tmp.height = canvas.height;
+    tmp.getContext('2d').drawImage(img, 0, 0);
+    dataUrl = tmp.toDataURL('image/png');
+    if (estimatePngBytes(dataUrl) <= maxBytes) {
+      return dataUrl.split(',')[1];
+    }
+  }
+
+  for (let scale = 0.9; scale >= 0.3; scale -= 0.1) {
+    const sw = Math.max(60, Math.round(canvas.width * scale));
+    const sh = Math.max(60, Math.round(canvas.height * scale));
+    const rc = document.createElement('canvas');
+    rc.width = sw;
+    rc.height = sh;
+    rc.getContext('2d').drawImage(canvas, 0, 0, sw, sh);
+    dataUrl = rc.toDataURL('image/png');
+    if (estimatePngBytes(dataUrl) <= maxBytes) {
+      return dataUrl.split(',')[1];
+    }
+  }
+
+  return dataUrl.split(',')[1];
+}
+
+function renderPreviews() {
+  const container = document.getElementById('derived-previews');
+  container.innerHTML = '';
+  if (!currentGroupKey) return;
+
+  const g = groups[currentGroupKey];
+  g.targets.forEach(t => {
+    const card = document.createElement('div');
+    card.className = 'preview-card';
+    
+    const base64 = imageStore[t.file];
+    const imgHtml = base64 ? `<img src="data:image/png;base64,${base64}">` : `<span style="color:#94a3b8;font-size:12px;">未生成</span>`;
+    
+    card.innerHTML = `
+      <div class="preview-img-wrap preview-bg-check bg-mode-${bgMode}">
+        ${imgHtml}
+      </div>
+      <div style="font-size:12px; font-weight:bold; color:var(--primary-color);">${t.file}</div>
+      <div style="font-size:11px; color:#64748b;">${t.w} × ${t.h} px</div>
+    `;
+    container.appendChild(card);
+  });
+}
+
+function changeBgMode(mode) {
+  bgMode = mode;
+  document.querySelectorAll('.preview-bg-check').forEach(el => {
+    el.className = `preview-img-wrap preview-bg-check bg-mode-${mode}`;
+  });
+}
+
+function updateProgressBar() {
+  const allTargetFiles = [];
+  Object.values(groups).forEach(g => g.targets.forEach(t => allTargetFiles.push(t.file)));
+  
+  const total = allTargetFiles.length;
+  const current = Object.keys(imageStore).filter(key => allTargetFiles.includes(key)).length;
+  
+  const percent = Math.floor((current / total) * 100);
+  document.getElementById('progress-bar').style.width = `${percent}%`;
+  document.getElementById('progress-text').innerText = `作成状況: ${percent}% (${current} / ${total}枚)`;
+
+  if (currentStep === 3) renderPasscodePreview();
+}
+
+function renderFinalCheck() {
+  const output = document.getElementById('checklist-output');
+  const alertBox = document.getElementById('missing-alert');
+  output.innerHTML = '';
+  
+  let missingRequiredCount = 0;
+
+  Object.values(groups).forEach(g => {
+    g.targets.forEach(t => {
+      const exists = !!imageStore[t.file];
+      const isReq = t.req;
+      
+      if (!exists && isReq) missingRequiredCount++;
+
+      const item = document.createElement('div');
+      item.className = `check-item ${exists ? 'ok' : (isReq ? 'missing' : '')}`;
+      item.innerHTML = `
+        <span>${exists ? '💚' : (isReq ? '❌' : '⚪')}</span>
+        <strong>${t.file}</strong> 
+        <span style="font-size:12px;color:#64748b;">(${g.label} - ${t.w}x${t.h}px ${isReq ? '' : '※任意'})</span>
+      `;
+      output.appendChild(item);
+    });
+  });
+
+  if (missingRequiredCount > 0) {
+    alertBox.innerText = `⚠️ 必須画像がまだ ${missingRequiredCount} 枚不足しています。このままZIP化できますが、LINEへの登録時にエラーになる可能性があります。`;
+    alertBox.style.color = "#ef4444";
+  } else {
+    alertBox.innerText = `✨ 素晴らしい！すべての必須画像が揃っています！`;
+    alertBox.style.color = "var(--primary-color)";
+  }
+}
+
+function downloadZip() {
+  if (Object.keys(imageStore).length === 0) {
+    alert("画像が1枚も生成されていません。");
+    return;
+  }
+  
+  const zip = new JSZip();
+  for (const [filename, base64Data] of Object.entries(imageStore)) {
+    zip.file(filename, base64Data, { base64: true });
+  }
+
+  zip.generateAsync({ type: "blob" }).then(function(content) {
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(content);
+    link.download = "theme.zip";
+    link.click();
+  });
+}
+
+function exportTemplate() {
+  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(imageStore));
+  const downloadAnchor = document.createElement('a');
+  downloadAnchor.setAttribute("href", dataStr);
+  downloadAnchor.setAttribute("download", "theme_template.json");
+  document.body.appendChild(downloadAnchor);
+  downloadAnchor.click();
+  downloadAnchor.remove();
+}
+
+function importTemplate(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const imported = JSON.parse(e.target.result);
+      Object.assign(imageStore, imported);
+      updateProgressBar();
+      saveToLocalStorage(); 
+      updateLivePreview();
+      if(currentStep === 5) renderFinalCheck(); else {
+        if((currentStep === 2 || currentStep === 3) && bulkMode === 'bulk') switchBulkMode('bulk');
+        else selectGroup(currentGroupKey);
+      }
+      alert("テンプレートを復元しました！");
+    } catch (err) {
+      alert("JSONファイルのインポートに失敗しました。構造を確認してください。");
+    }
+  };
+  reader.readAsDataURL(file);
+  input.value = ''; 
+}
+
+init();
+</script>
+</body>
+</html>a;
       --card-bg: #ffffff;
       --border-color: #e2e8f0;
       --text-color: #334155;
