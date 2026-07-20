@@ -706,9 +706,17 @@ function resetBulkView() {
 function showBulkSetup() {
   document.getElementById('bulk-setup-area').style.display = 'flex';
   document.getElementById('bulk-reset-area').style.display = 'none';
+  document.getElementById('bulk-pieces-container').innerHTML = '';
   document.getElementById('bulk-pieces-container').style.display = 'none';
   document.getElementById('bulk-submit-bar').style.display = 'none';
   document.getElementById('bulk-overlay-section').style.display = 'none';
+  document.getElementById('bulk-action-bar').style.display = 'none';
+  document.getElementById('bulk-img-preview-wrap').style.display = 'none';
+  document.getElementById('bulk-drop-hint').style.display = 'block';
+  document.getElementById('bulk-source-img').src = '';
+  document.getElementById('bulkImageLoader').value = '';
+  bulkPiecesData = [];
+  bulkCropBoxes = [];
   bulkSelectedIndex = null;
 }
 
