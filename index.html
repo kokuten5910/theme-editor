@@ -9,6 +9,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pica/9.0.1/pica.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/upng-js/2.1.0/UPNG.min.js"></script>
 
   <style>
     :root {
@@ -1360,46 +1362,59 @@ async function applyBulkImagesToStore() {
 
 async function generateDerivedImages() {
   if (!cropper || !currentGroupKey) return;
-  
+
   const g = groups[currentGroupKey];
-  const croppedCanvas = cropper.getCroppedCanvas();
-  
-  for (const target of g.targets) {
-    const destCanvas = document.createElement('canvas');
-    destCanvas.width = target.w;
-    destCanvas.height = target.h;
-    const ctx = destCanvas.getContext('2d');
-    ctx.clearRect(0, 0, target.w, target.h);
+  const genBtn = document.getElementById('btn-generate');
+  const originalBtnText = genBtn.innerText;
+  genBtn.disabled = true;
+  genBtn.innerText = '生成中...';
 
-    const ratio = Math.max(target.w / croppedCanvas.width, target.h / croppedCanvas.height);
-    const nw = Math.floor(croppedCanvas.width * ratio);
-    const nh = Math.floor(croppedCanvas.height * ratio);
-    const tx = Math.floor((target.w - nw) / 2);
-    const ty = Math.floor((target.h - nh) / 2);
+  try {
+    const croppedCanvas = cropper.getCroppedCanvas();
 
-    if (picaInstance) {
-      const tempCanvas = document.createElement('canvas');
-      tempCanvas.width = nw;
-      tempCanvas.height = nh;
-      await picaInstance.resize(croppedCanvas, tempCanvas, { features: ['js', 'wasm', 'ww'] });
-      ctx.drawImage(tempCanvas, tx, ty, nw, nh);
-    } else {
-      ctx.drawImage(croppedCanvas, tx, ty, nw, nh);
+    for (const target of g.targets) {
+      const destCanvas = document.createElement('canvas');
+      destCanvas.width = target.w;
+      destCanvas.height = target.h;
+      const ctx = destCanvas.getContext('2d');
+      ctx.clearRect(0, 0, target.w, target.h);
+
+      const ratio = Math.max(target.w / croppedCanvas.width, target.h / croppedCanvas.height);
+      const nw = Math.floor(croppedCanvas.width * ratio);
+      const nh = Math.floor(croppedCanvas.height * ratio);
+      const tx = Math.floor((target.w - nw) / 2);
+      const ty = Math.floor((target.h - nh) / 2);
+
+      if (picaInstance) {
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = nw;
+        tempCanvas.height = nh;
+        await picaInstance.resize(croppedCanvas, tempCanvas, { features: ['js', 'wasm', 'ww'] });
+        ctx.drawImage(tempCanvas, tx, ty, nw, nh);
+      } else {
+        ctx.drawImage(croppedCanvas, tx, ty, nw, nh);
+      }
+
+      if (target.maxSizeMB) {
+        imageStore[target.file] = await canvasToSizedPngBase64(destCanvas, target.maxSizeMB * 1024 * 1024);
+      } else {
+        const dataUrl = destCanvas.toDataURL('image/png');
+        imageStore[target.file] = dataUrl.split(',')[1];
+      }
     }
-    
-    if (target.maxSizeMB) {
-      imageStore[target.file] = await canvasToSizedPngBase64(destCanvas, target.maxSizeMB * 1024 * 1024);
-    } else {
-      const dataUrl = destCanvas.toDataURL('image/png');
-      imageStore[target.file] = dataUrl.split(',')[1];
-    }
+
+    updateProgressBar();
+    saveToLocalStorage();
+    renderSidebarList();
+    renderPreviews();
+    updateLivePreview();
+  } catch (err) {
+    console.error('生成処理でエラーが発生しました:', err);
+    alert('画像の生成中にエラーが発生しました。お手数ですが、もう一度画像を選び直して生成をお試しください。\n(詳細: ' + err.message + ')');
+  } finally {
+    genBtn.disabled = false;
+    genBtn.innerText = originalBtnText;
   }
-
-  updateProgressBar();
-  saveToLocalStorage(); 
-  renderSidebarList();
-  renderPreviews();
-  updateLivePreview();
 }
 
 function estimatePngBytes(dataUrl) {
@@ -1407,44 +1422,52 @@ function estimatePngBytes(dataUrl) {
   return Math.ceil(base64Len * 3 / 4);
 }
 
+function arrayBufferToBase64(buffer) {
+  let binary = '';
+  const bytes = new Uint8Array(buffer);
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
+}
+
+// 解像度(縦横px)はそのまま維持し、PNGの色数だけを段階的に落として容量を抑える方式。
+// UPNG.jsが使えない場合のみ、フォールバックとして通常のcanvas書き出し(無圧縮)を返す。
 async function canvasToSizedPngBase64(canvas, maxBytes) {
-  let dataUrl = canvas.toDataURL('image/png');
-  if (!maxBytes || estimatePngBytes(dataUrl) <= maxBytes) {
+  const w = canvas.width, h = canvas.height;
+
+  if (typeof UPNG === 'undefined' || typeof pako === 'undefined') {
+    const dataUrl = canvas.toDataURL('image/png');
     return dataUrl.split(',')[1];
   }
 
-  let sourceCanvas = canvas;
-  for (let quality = 0.92; quality >= 0.15; quality -= 0.12) {
-    const jpegUrl = sourceCanvas.toDataURL('image/jpeg', quality);
-    const img = await new Promise((resolve) => {
-      const im = new Image();
-      im.onload = () => resolve(im);
-      im.src = jpegUrl;
-    });
-    const tmp = document.createElement('canvas');
-    tmp.width = canvas.width;
-    tmp.height = canvas.height;
-    tmp.getContext('2d').drawImage(img, 0, 0);
-    dataUrl = tmp.toDataURL('image/png');
-    if (estimatePngBytes(dataUrl) <= maxBytes) {
-      return dataUrl.split(',')[1];
-    }
-  }
+  try {
+    const ctx = canvas.getContext('2d');
+    const imgData = ctx.getImageData(0, 0, w, h);
 
-  for (let scale = 0.9; scale >= 0.3; scale -= 0.1) {
-    const sw = Math.max(60, Math.round(canvas.width * scale));
-    const sh = Math.max(60, Math.round(canvas.height * scale));
-    const rc = document.createElement('canvas');
-    rc.width = sw;
-    rc.height = sh;
-    rc.getContext('2d').drawImage(canvas, 0, 0, sw, sh);
-    dataUrl = rc.toDataURL('image/png');
-    if (estimatePngBytes(dataUrl) <= maxBytes) {
-      return dataUrl.split(',')[1];
+    // 1. まずは無圧縮(フルカラー・ロスレス)で容量を確認
+    let buf = UPNG.encode([imgData.data.buffer], w, h, 0);
+    if (!maxBytes || buf.byteLength <= maxBytes) {
+      return arrayBufferToBase64(buf);
     }
-  }
 
-  return dataUrl.split(',')[1];
+    // 2. 収まらない場合、解像度は変えずに色数のみ段階的に落として容量を抑える
+    const colorSteps = [256, 200, 160, 128, 96, 64, 48, 32, 24, 16, 12, 8, 6, 4];
+    for (const cnum of colorSteps) {
+      buf = UPNG.encode([imgData.data.buffer], w, h, cnum);
+      if (buf.byteLength <= maxBytes) {
+        return arrayBufferToBase64(buf);
+      }
+    }
+
+    // 3. 最後まで到達した場合は、最も容量を抑えられた状態（解像度は維持）のものを返す
+    return arrayBufferToBase64(buf);
+  } catch (err) {
+    console.error('PNG圧縮でエラーが発生したため、通常のPNG書き出しにフォールバックします:', err);
+    const dataUrl = canvas.toDataURL('image/png');
+    return dataUrl.split(',')[1];
+  }
 }
 
 function renderPreviews() {
