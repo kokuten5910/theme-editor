@@ -1492,6 +1492,79 @@ function renderPreviews() {
     `;
     container.appendChild(card);
   });
+
+  // 🔁 メニュー背景は横方向にリピートして表示される仕様のため、
+  // つなぎ目(右端と左端)が綺麗に繋がっているか確認できるプレビューを追加表示する。
+  if (currentGroupKey === 'bg_menu' && imageStore['i_11.png']) {
+    const repeatCard = document.createElement('div');
+    repeatCard.style.cssText = 'width:100%; margin-top:10px;';
+    repeatCard.innerHTML = `
+      <div style="font-size:12px; font-weight:bold; color:var(--primary-color); margin-bottom:6px;">
+        🔁 つなぎ目チェック
+      </div>
+      <div style="font-size:11px; color:#64748b; margin-bottom:8px;">
+        実際のLINE画面では、この画像が横方向に連続して繰り返し表示されます（画像の右端の直後に、同じ画像の左端がまた続きます）。
+        そのため「画像の右端」と「画像の左端」の柄・色が滑らかに繋がっている必要があります。
+      </div>
+      <div style="font-size:11px; font-weight:bold; margin-bottom:4px;">① タイル表示（実際に3枚並べた見え方）</div>
+      <canvas id="menu-tile-canvas" style="width:100%; max-width:100%; border:1px solid var(--border-color); border-radius:6px; display:block;"></canvas>
+      <div style="font-size:11px; font-weight:bold; margin:10px 0 4px;">② つなぎ目クローズアップ（右端 → 左端 の境界を拡大）</div>
+      <canvas id="menu-seam-canvas" style="width:100%; max-width:400px; border:1px solid var(--border-color); border-radius:6px; display:block;"></canvas>
+      <div style="font-size:11px; color:#64748b; margin-top:6px;">
+        中央の赤い点線が「右端と左端の境目」です。ここで柄・色が不自然に途切れている場合はリピートがズレています。切り抜き位置を調整してもう一度生成してください。
+      </div>
+    `;
+    container.appendChild(repeatCard);
+    drawMenuSeamCheck(imageStore['i_11.png']);
+  }
+}
+
+// 🔁 メニュー背景のつなぎ目チェック用描画処理
+// ①画像を3枚横に並べたタイル表示 と ②右端+左端を直接くっつけたクローズアップ表示 を作る
+function drawMenuSeamCheck(base64) {
+  const img = new Image();
+  img.onload = function() {
+    const iw = img.naturalWidth, ih = img.naturalHeight;
+
+    // ① タイル表示：同じ画像を3枚、隙間なく横に並べる
+    const tileCanvas = document.getElementById('menu-tile-canvas');
+    if (tileCanvas) {
+      tileCanvas.width = iw * 3;
+      tileCanvas.height = ih;
+      const tctx = tileCanvas.getContext('2d');
+      for (let i = 0; i < 3; i++) {
+        tctx.drawImage(img, iw * i, 0);
+      }
+    }
+
+    // ② つなぎ目クローズアップ：右端の一部 + 左端の一部を隣り合わせに描画し、2倍拡大
+    const seamCanvas = document.getElementById('menu-seam-canvas');
+    if (seamCanvas) {
+      const stripW = Math.max(20, Math.min(150, Math.round(iw * 0.12))); // 端から切り出す幅(元画像px)
+      const zoom = 2;
+      seamCanvas.width = stripW * 2 * zoom;
+      seamCanvas.height = ih * zoom;
+      const sctx = seamCanvas.getContext('2d');
+      sctx.imageSmoothingEnabled = false;
+
+      // 右端 stripW px を左半分に描画
+      sctx.drawImage(img, iw - stripW, 0, stripW, ih, 0, 0, stripW * zoom, ih * zoom);
+      // 左端 stripW px を右半分に描画
+      sctx.drawImage(img, 0, 0, stripW, ih, stripW * zoom, 0, stripW * zoom, ih * zoom);
+
+      // 境目に赤い点線を描画
+      sctx.save();
+      sctx.strokeStyle = 'rgba(239,68,68,0.85)';
+      sctx.lineWidth = 2;
+      sctx.setLineDash([6, 6]);
+      sctx.beginPath();
+      sctx.moveTo(stripW * zoom, 0);
+      sctx.lineTo(stripW * zoom, ih * zoom);
+      sctx.stroke();
+      sctx.restore();
+    }
+  };
+  img.src = `data:image/png;base64,${base64}`;
 }
 
 function changeBgMode(mode) {
