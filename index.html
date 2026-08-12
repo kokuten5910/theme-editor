@@ -4,8 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LINE着せ替え 爆速ジェネレーター v10 + リアルタイムプレビュー</title>
- <!-- タブ用アイコン（スマホ×ハンガー） -->
-<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2222%22 fill=%22%2306C755%22/><rect x=%2225%22 y=%2212%22 width=%2250%22 height=%2276%22 rx=%2210%22 fill=%22none%22 stroke=%22%23fff%22 stroke-width=%227%22/><path d=%22M 50 38 Q 44 38 44 30 Q 44 23 51 23 Q 57 23 56 29%22 stroke=%22%23fff%22 stroke-width=%226%22 stroke-linecap=%22round%22 fill=%22none%22/><path d=%22M 33 58 L 50 42 L 67 58 Z%22 stroke=%22%23fff%22 stroke-width=%226%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22 fill=%22none%22/></svg>">
+  
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -20,6 +19,7 @@
       --card-bg: #ffffff;
       --border-color: #e2e8f0;
       --text-color: #334155;
+      --nav-icon-height: 60px; /* 📱 メニューアイコンの表示サイズ（公式の見え方に近い固定値） */
     }
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: var(--bg-color); color: var(--text-color); margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; }
     
@@ -121,10 +121,10 @@
     
     /* 下部ナビゲーションバー */
     .phone-nav { height: 60px; border-top: 1px solid #e2e8f0; display: flex; background: #ffffff; background-size: cover; background-position: center; flex-shrink: 0; position: relative; }
-    .phone-nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; position: relative; padding: 2px 0; transition: background 0.1s; z-index: 2; }
+    .phone-nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; position: relative; padding: 2px 0; transition: background 0.1s; z-index: 2; overflow: visible; }
     .phone-nav-item:hover { background: rgba(0,0,0,0.02); }
-    .phone-nav-item img { height: 34px; width: auto; object-fit: contain; display: none; }
-    .phone-nav-item span { font-size: 9px; color: #64748b; margin-top: 2px; transform: scale(0.9); }
+    .phone-nav-item img { height: var(--nav-icon-height); width: auto; object-fit: contain; display: none; position: relative; z-index: 2; }
+    .phone-nav-item span { position: absolute; left: 0; right: 0; bottom: 4px; text-align: center; font-size: 9px; color: #64748b; transform: scale(0.9); z-index: 1; pointer-events: none; }
     .phone-nav-item.active span { color: var(--primary-color); font-weight: bold; }
     .dummy-icon { width: 22px; height: 22px; border-radius: 50%; background: #94a3b8; }
     .phone-nav-item.active .dummy-icon { background: var(--primary-color); }
@@ -392,24 +392,24 @@ const groups = {
     { file: "android_thumbnail.png", w: 136, h: 202, req: true },
     { file: "store_thumbnail.png", w: 198, h: 278, req: true }
   ]},
-  menu_talk_off: { step: 2, label: "トーク (OFF)", targets: [{ file: "i_03.png", w: 128, h: 150, req: true }, { file: "i_03_g.png", w: 80, h: 56, req: true }] },
-  menu_talk_on: { step: 2, label: "トーク (ON)", targets: [{ file: "i_04.png", w: 128, h: 150, req: true }, { file: "i_04_g.png", w: 80, h: 56, req: true }] },
-  menu_call_off: { step: 2, label: "通話 (OFF)", targets: [{ file: "i_07.png", w: 128, h: 150, req: true }, { file: "i_07_g.png", w: 80, h: 56, req: true }] },
-  menu_call_on: { step: 2, label: "通話 (ON)", targets: [{ file: "i_08.png", w: 128, h: 150, req: true }, { file: "i_08_g.png", w: 80, h: 56, req: true }] },
-  menu_news_off: { step: 2, label: "ニュース (OFF)", targets: [{ file: "i_25.png", w: 128, h: 150, req: true }, { file: "i_25_g.png", w: 80, h: 56, req: true }] },
-  menu_news_on: { step: 2, label: "ニュース (ON)", targets: [{ file: "i_26.png", w: 128, h: 150, req: true }, { file: "i_26_g.png", w: 80, h: 56, req: true }] },
-  menu_wallet_off: { step: 2, label: "ウォレット (OFF)", targets: [{ file: "i_27.png", w: 128, h: 150, req: true }, { file: "i_27_g.png", w: 80, h: 56, req: true }] },
-  menu_wallet_on: { step: 2, label: "ウォレット (ON)", targets: [{ file: "i_28.png", w: 128, h: 150, req: true }, { file: "i_28_g.png", w: 80, h: 56, req: true }] },
-  menu_home_off: { step: 2, label: "ホーム (OFF)", targets: [{ file: "i_29.png", w: 128, h: 150, req: true }, { file: "i_29_g.png", w: 80, h: 56, req: true }] },
-  menu_home_on: { step: 2, label: "ホーム (ON)", targets: [{ file: "i_30.png", w: 128, h: 150, req: true }, { file: "i_30_g.png", w: 80, h: 56, req: true }] },
-  menu_today_off: { step: 2, label: "TODAY (OFF)", targets: [{ file: "i_31.png", w: 128, h: 150, req: true }, { file: "i_31_g.png", w: 80, h: 56, req: true }] },
-  menu_today_on: { step: 2, label: "TODAY (ON)", targets: [{ file: "i_32.png", w: 128, h: 150, req: true }, { file: "i_32_g.png", w: 80, h: 56, req: true }] },
-  menu_voom_off: { step: 2, label: "VOOM (OFF)", targets: [{ file: "i_33.png", w: 128, h: 150, req: true }, { file: "i_33_g.png", w: 80, h: 56, req: true }] },
-  menu_voom_on: { step: 2, label: "VOOM (ON)", targets: [{ file: "i_34.png", w: 128, h: 150, req: true }, { file: "i_34_g.png", w: 80, h: 56, req: true }] },
-  menu_shop_off: { step: 2, label: "ショッピング (OFF)", targets: [{ file: "i_35.png", w: 128, h: 150, req: true }, { file: "i_35_g.png", w: 80, h: 56, req: true }] },
-  menu_shop_on: { step: 2, label: "ショッピング (ON)", targets: [{ file: "i_36.png", w: 128, h: 150, req: true }, { file: "i_36_g.png", w: 80, h: 56, req: true }] },
-  menu_app_off: { step: 2, label: "アプリ (OFF)", targets: [{ file: "i_37.png", w: 128, h: 150, req: true }, { file: "i_37_g.png", w: 80, h: 56, req: true }] },
-  menu_app_on: { step: 2, label: "アプリ (ON)", targets: [{ file: "i_38.png", w: 128, h: 150, req: true }, { file: "i_38_g.png", w: 80, h: 56, req: true }] }
+  menu_talk_off: { step: 2, label: "トーク (OFF)", targets: [{ file: "i_03.png", w: 128, h: 150, req: true, pad: 10 }, { file: "i_03_g.png", w: 80, h: 56, req: true }] },
+  menu_talk_on: { step: 2, label: "トーク (ON)", targets: [{ file: "i_04.png", w: 128, h: 150, req: true, pad: 10 }, { file: "i_04_g.png", w: 80, h: 56, req: true }] },
+  menu_call_off: { step: 2, label: "通話 (OFF)", targets: [{ file: "i_07.png", w: 128, h: 150, req: true, pad: 10 }, { file: "i_07_g.png", w: 80, h: 56, req: true }] },
+  menu_call_on: { step: 2, label: "通話 (ON)", targets: [{ file: "i_08.png", w: 128, h: 150, req: true, pad: 10 }, { file: "i_08_g.png", w: 80, h: 56, req: true }] },
+  menu_news_off: { step: 2, label: "ニュース (OFF)", targets: [{ file: "i_25.png", w: 128, h: 150, req: true, pad: 10 }, { file: "i_25_g.png", w: 80, h: 56, req: true }] },
+  menu_news_on: { step: 2, label: "ニュース (ON)", targets: [{ file: "i_26.png", w: 128, h: 150, req: true, pad: 10 }, { file: "i_26_g.png", w: 80, h: 56, req: true }] },
+  menu_wallet_off: { step: 2, label: "ウォレット (OFF)", targets: [{ file: "i_27.png", w: 128, h: 150, req: true, pad: 10 }, { file: "i_27_g.png", w: 80, h: 56, req: true }] },
+  menu_wallet_on: { step: 2, label: "ウォレット (ON)", targets: [{ file: "i_28.png", w: 128, h: 150, req: true, pad: 10 }, { file: "i_28_g.png", w: 80, h: 56, req: true }] },
+  menu_home_off: { step: 2, label: "ホーム (OFF)", targets: [{ file: "i_29.png", w: 128, h: 150, req: true, pad: 10 }, { file: "i_29_g.png", w: 80, h: 56, req: true }] },
+  menu_home_on: { step: 2, label: "ホーム (ON)", targets: [{ file: "i_30.png", w: 128, h: 150, req: true, pad: 10 }, { file: "i_30_g.png", w: 80, h: 56, req: true }] },
+  menu_today_off: { step: 2, label: "TODAY (OFF)", targets: [{ file: "i_31.png", w: 128, h: 150, req: true, pad: 10 }, { file: "i_31_g.png", w: 80, h: 56, req: true }] },
+  menu_today_on: { step: 2, label: "TODAY (ON)", targets: [{ file: "i_32.png", w: 128, h: 150, req: true, pad: 10 }, { file: "i_32_g.png", w: 80, h: 56, req: true }] },
+  menu_voom_off: { step: 2, label: "VOOM (OFF)", targets: [{ file: "i_33.png", w: 128, h: 150, req: true, pad: 10 }, { file: "i_33_g.png", w: 80, h: 56, req: true }] },
+  menu_voom_on: { step: 2, label: "VOOM (ON)", targets: [{ file: "i_34.png", w: 128, h: 150, req: true, pad: 10 }, { file: "i_34_g.png", w: 80, h: 56, req: true }] },
+  menu_shop_off: { step: 2, label: "ショッピング (OFF)", targets: [{ file: "i_35.png", w: 128, h: 150, req: true, pad: 10 }, { file: "i_35_g.png", w: 80, h: 56, req: true }] },
+  menu_shop_on: { step: 2, label: "ショッピング (ON)", targets: [{ file: "i_36.png", w: 128, h: 150, req: true, pad: 10 }, { file: "i_36_g.png", w: 80, h: 56, req: true }] },
+  menu_app_off: { step: 2, label: "アプリ (OFF)", targets: [{ file: "i_37.png", w: 128, h: 150, req: true, pad: 10 }, { file: "i_37_g.png", w: 80, h: 56, req: true }] },
+  menu_app_on: { step: 2, label: "アプリ (ON)", targets: [{ file: "i_38.png", w: 128, h: 150, req: true, pad: 10 }, { file: "i_38_g.png", w: 80, h: 56, req: true }] }
 };
 
 for(let i=12; i<=19; i++) {
@@ -443,6 +443,10 @@ let bulkDragMode = 'move';
 let bulkDragOffset = { x: 0, y: 0, sw: 0, sh: 0, sx: 0 };
 let bgMode = 'transparent';
 let lastLoadedFile = null; 
+
+// 📏 トーク背景：大きい画面での「上部が切れてカラースキンが見える」確認用の状態
+let bgTalkSliderPercent = 120; // 画面の縦の余裕（基準を100%とした割合）
+let bgTalkSkinColor = '#ffffff'; // 上部に見えるカラースキン（背景色）の確認用カラー
 
 // 🔐 パスコード画面プレビュー用の状態
 let passcodeState = 'off';          // 'off' | 'on' | 'anim'
@@ -510,6 +514,35 @@ function selectTab(tabName) {
 }
 
 // 📱 LINE風画面のリアルタイム書き換え処理
+// 🖼 トーク背景プレビューのサイズ計算
+// LINE公式ガイドラインでは、背景画像の最大サイズは「端末が横向きのとき」の横1482×縦1334pxで、
+// 「端末が縦向きのとき」は横640×縦1334pxしか表示に使われないと明記されている。
+// つまり通常の縦向き利用では、画像の横幅のうち中央の 640/1482 分（縦横比にすると 640:1334 ≒ 0.48）
+// しか画面に映らず、両端は大きく切れる。この比率を基準に、
+// プレビュー枠の「横幅」から本来あるべき「縦の実効サイズ」を仮想的に算出し、
+// その仮想サイズに対して cover 相当のスケール計算を行うことで、
+// プレビュー枠自体の実際の縦横比（PC/スマホ表示でサイズが変わっても）に左右されず、
+// 常に公式と同じ見え方（切り取られ方）を再現する。
+const TALK_BG_REF_ASPECT = 640 / 1334; // 公式ガイドライン記載の縦向き表示比率（横640:縦1334）
+function applyTalkBgSizing(bodyEl) {
+  const target = groups['bg_talk'] ? groups['bg_talk'].targets.find(t => t.file === 'i_22.png') : null;
+  const imgW = target ? target.w : 1482;
+  const imgH = target ? target.h : 1334;
+
+  const containerW = bodyEl.clientWidth || 260;
+  const virtualH = containerW / TALK_BG_REF_ASPECT; // 公式比率に基づく「仮想の縦幅」
+
+  const scale = Math.max(containerW / imgW, virtualH / imgH);
+  const displayedW = Math.round(imgW * scale);
+  const displayedH = Math.round(imgH * scale);
+
+  bodyEl.style.backgroundSize = `${displayedW}px ${displayedH}px`;
+  // 公式ガイドライン「イラストは端末の縦向き・横向きに関わらずセンター下揃えで配置される」に基づき、
+  // 横方向は中央基準（右基準ではない）で表示する。
+  bodyEl.style.backgroundPosition = 'center bottom';
+  bodyEl.style.backgroundRepeat = 'no-repeat';
+}
+
 function updateLivePreview() {
   const tabs = ['home', 'talk', 'voom', 'call', 'wallet'];
   const mapping = {
@@ -571,10 +604,15 @@ function updateLivePreview() {
       `;
     } else if (activeTab === 'talk') {
       // トーク背景 (i_22.png) の反映
+      // ※LINE公式ガイドラインでは「イラストは端末の向きに関わらずセンター下揃えで配置される」と
+      //   明記されており、横方向は中央基準・縦方向は下（入力欄の上）基準で固定表示される仕様。
+      //   画面に収まりきらない上側・左右両端だけがカットされる。
+      // さらに、単純な background-size:cover だと「プレビュー枠自体の縦横比」次第で
+      // 切り取られる量が公式と変わってしまう（枠が横長だと画像が大きく見えすぎる）ため、
+      // 公式のトーク画面を実測した縦横比を基準に、枠の実際のサイズによらず同じ見え方になるよう計算する。
       if (imageStore['i_22.png']) {
         bodyEl.style.backgroundImage = `url(data:image/png;base64,${imageStore['i_22.png']})`;
-        bodyEl.style.backgroundSize = 'cover';
-        bodyEl.style.backgroundPosition = 'center';
+        applyTalkBgSizing(bodyEl);
       } else {
         bodyEl.style.backgroundImage = 'none';
         bodyEl.style.backgroundColor = '#7494c4'; // LINE標準風の青背景
@@ -1300,6 +1338,20 @@ function selectBulkBox(index) {
   window.addEventListener('touchmove', onBulkCanvasMove, { passive: false });
   window.addEventListener('mouseup', onBulkCanvasEnd);
   window.addEventListener('touchend', onBulkCanvasEnd);
+
+  // 画面サイズが変わった際、トーク背景プレビューの切り取り位置がズレないよう再計算する
+  let talkBgResizeTimer = null;
+  window.addEventListener('resize', () => {
+    clearTimeout(talkBgResizeTimer);
+    talkBgResizeTimer = setTimeout(() => {
+      if (activeTab === 'talk') {
+        const bodyEl = document.getElementById('phone-body-content');
+        if (bodyEl && imageStore['i_22.png']) {
+          applyTalkBgSizing(bodyEl);
+        }
+      }
+    }, 150);
+  });
 })();
 
 async function applyBulkImagesToStore() {
@@ -1333,7 +1385,12 @@ async function applyBulkImagesToStore() {
       const ctx = destCanvas.getContext('2d');
       ctx.clearRect(0, 0, target.w, target.h);
 
-      const ratio = Math.min(target.w / pieceImg.width, target.h / pieceImg.height);
+      // 📏 pad指定がある場合、上下左右にその分の余白を残して小さめに配置する
+      const pad = target.pad || 0;
+      const drawAreaW = target.w - pad * 2;
+      const drawAreaH = target.h - pad * 2;
+
+      const ratio = Math.min(drawAreaW / pieceImg.width, drawAreaH / pieceImg.height);
       const nw = Math.floor(pieceImg.width * ratio);
       const nh = Math.floor(pieceImg.height * ratio);
       const tx = Math.floor((target.w - nw) / 2);
@@ -1380,7 +1437,13 @@ async function generateDerivedImages() {
       const ctx = destCanvas.getContext('2d');
       ctx.clearRect(0, 0, target.w, target.h);
 
-      const ratio = Math.max(target.w / croppedCanvas.width, target.h / croppedCanvas.height);
+      // 📏 pad指定がある場合、上下左右にその分の余白を残して小さめに配置する
+      // （メニューアイコンなど、ピッタリに切り出すと公式より大きく見えてしまう画像向け）
+      const pad = target.pad || 0;
+      const drawAreaW = target.w - pad * 2;
+      const drawAreaH = target.h - pad * 2;
+
+      const ratio = Math.max(drawAreaW / croppedCanvas.width, drawAreaH / croppedCanvas.height);
       const nw = Math.floor(croppedCanvas.width * ratio);
       const nh = Math.floor(croppedCanvas.height * ratio);
       const tx = Math.floor((target.w - nw) / 2);
@@ -1518,6 +1581,112 @@ function renderPreviews() {
     container.appendChild(repeatCard);
     drawMenuSeamCheck(imageStore['i_11.png']);
   }
+
+  // 📏 トーク背景：画面が大きい端末で「上部が切れてカラースキンが見える」問題の確認用プレビュー
+  // 公式ガイドライン：「トークルーム背景画像を登録した場合、画面サイズが大きい一部の端末では
+  // 画像の上部が切れ、カラースキンが表示されます。」
+  // → 画像は伸縮せず下揃え・固定サイズで表示されるため、画面が縦に長い端末ほど、
+  //   画像が届かない上部にそのままカラースキン（背景色）が見えてしまう。
+  if (currentGroupKey === 'bg_talk' && imageStore['i_22.png']) {
+    const bigScreenCard = document.createElement('div');
+    bigScreenCard.style.cssText = 'width:100%; margin-top:10px;';
+    bigScreenCard.innerHTML = `
+      <div style="font-size:12px; font-weight:bold; color:var(--primary-color); margin-bottom:6px;">
+        📏 画面が大きい端末での見え方チェック（背景色/カラースキンの見切れ確認）
+      </div>
+      <div style="font-size:11px; color:#64748b; margin-bottom:8px;">
+        公式ガイドラインには「画面サイズが大きい一部の端末では画像の上部が切れ、カラースキンが表示されます」と明記されています。
+        画像は伸縮せず下揃えで固定表示されるため、画面が縦に長い端末ほど、画像が届かない上部にそのまま背景色（カラースキン）が見えます。
+        スライダーで画面の縦の余裕を変化させて、上部の見え方を確認してください。
+      </div>
+      <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px; flex-wrap:wrap;">
+        <label style="font-size:11px; color:#334155;">画面の縦の余裕：<span id="bgtalk-slider-val">${bgTalkSliderPercent}</span>%</label>
+        <input type="range" id="bgtalk-height-slider" min="100" max="170" step="5" value="${bgTalkSliderPercent}" style="width:140px;" oninput="onBgTalkSliderChange(this.value)">
+      </div>
+      <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px; flex-wrap:wrap;">
+        <label style="font-size:11px; color:#334155;">背景色（カラースキンの色）：</label>
+        <input type="color" id="bgtalk-skin-color" value="${bgTalkSkinColor}" onchange="onBgTalkColorChange(this.value)">
+        <span style="font-size:11px; color:#94a3b8;">👆 下の画像プレビューをクリックすると、その位置の色をスポイトで取得できます</span>
+      </div>
+      <div id="bgtalk-mock-wrap" style="width:220px; border:1px solid var(--border-color); border-radius:6px; overflow:hidden; position:relative; background:${bgTalkSkinColor};">
+        <canvas id="bgtalk-largescreen-canvas" style="display:block; position:absolute; bottom:0; left:0; cursor:crosshair;" title="クリックでこの位置の色を取得"></canvas>
+      </div>
+      <div style="font-size:11px; color:#64748b; margin-top:6px;">
+        上の余白部分が「カラースキンが見えてしまう部分」です。この余白と背景画像の境目が不自然な場合は、境目に近い色を画像からスポイトで取得して背景色に指定するか、画像の端をその色に合わせて作り直してください。
+      </div>
+    `;
+    container.appendChild(bigScreenCard);
+    renderBgTalkLargeScreenCheck();
+  }
+}
+
+// 📏 大画面チェック用プレビューの描画（スライダー/カラー変更時にも呼び直す）
+function renderBgTalkLargeScreenCheck() {
+  const wrap = document.getElementById('bgtalk-mock-wrap');
+  const canvas = document.getElementById('bgtalk-largescreen-canvas');
+  if (!wrap || !canvas || !imageStore['i_22.png']) return;
+
+  const mockWidth = 220; // モック表示用の固定幅(px)
+  const target = groups['bg_talk'] ? groups['bg_talk'].targets.find(t => t.file === 'i_22.png') : null;
+  const imgW = target ? target.w : 1482;
+  const imgH = target ? target.h : 1334;
+
+  // 通常のリアルタイムプレビューと同じ計算式で「実際に表示される画像サイズ」を求める
+  const virtualH = mockWidth / TALK_BG_REF_ASPECT;
+  const scale = Math.max(mockWidth / imgW, virtualH / imgH);
+  const displayedW = Math.round(imgW * scale);
+  const displayedH = Math.round(imgH * scale);
+
+  const wrapHeight = Math.round(displayedH * (bgTalkSliderPercent / 100));
+  wrap.style.height = `${wrapHeight}px`;
+  wrap.style.backgroundColor = bgTalkSkinColor;
+
+  canvas.width = displayedW;
+  canvas.height = displayedH;
+  canvas.style.width = `${displayedW}px`;
+  canvas.style.height = `${displayedH}px`;
+  // センター基準で表示するため、モック幅との差分だけ左にオフセットする
+  canvas.style.left = `${Math.round((mockWidth - displayedW) / 2)}px`;
+
+  const img = new Image();
+  img.onload = function() {
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0, displayedW, displayedH);
+  };
+  img.src = `data:image/png;base64,${imageStore['i_22.png']}`;
+
+  canvas.onclick = function(e) {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = Math.floor((e.clientX - rect.left) * scaleX);
+    const y = Math.floor((e.clientY - rect.top) * scaleY);
+    const ctx = canvas.getContext('2d');
+    try {
+      const pixel = ctx.getImageData(x, y, 1, 1).data;
+      const hex = '#' + [pixel[0], pixel[1], pixel[2]].map(v => v.toString(16).padStart(2, '0')).join('');
+      bgTalkSkinColor = hex;
+      const colorInput = document.getElementById('bgtalk-skin-color');
+      if (colorInput) colorInput.value = hex;
+      wrap.style.backgroundColor = hex;
+    } catch (err) {
+      console.log('画像からの色取得に失敗しました', err);
+    }
+  };
+}
+
+function onBgTalkSliderChange(val) {
+  bgTalkSliderPercent = parseInt(val, 10);
+  const label = document.getElementById('bgtalk-slider-val');
+  if (label) label.innerText = val;
+  renderBgTalkLargeScreenCheck();
+}
+
+function onBgTalkColorChange(val) {
+  bgTalkSkinColor = val;
+  const wrap = document.getElementById('bgtalk-mock-wrap');
+  if (wrap) wrap.style.backgroundColor = val;
 }
 
 // 🔁 メニュー背景のつなぎ目チェック用描画処理
