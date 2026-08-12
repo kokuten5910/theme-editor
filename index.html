@@ -1580,6 +1580,29 @@ function renderPreviews() {
     `;
     container.appendChild(repeatCard);
     drawMenuSeamCheck(imageStore['i_11.png']);
+
+    // 🚨 メニュー背景：下部100px・左右端の透過チェック（フォーマット規定違反の自動検出）
+    // 公式規定：イラスト部分の高さは100～150px、画像下部100pxエリアは透過不可（上部の透過はOK）。
+    // わずかな透過は見た目で気づきにくいため、下部100pxを拡大しマゼンタ色で強調表示する。
+    const alphaCheckCard = document.createElement('div');
+    alphaCheckCard.style.cssText = 'width:100%; margin-top:14px; padding-top:10px; border-top:1px dashed var(--border-color);';
+    alphaCheckCard.innerHTML = `
+      <div style="font-size:12px; font-weight:bold; color:var(--primary-color); margin-bottom:6px;">
+        🚨 透過チェック（下部100px・左右端）
+      </div>
+      <div style="font-size:11px; color:#64748b; margin-bottom:8px;">
+        公式フォーマット規定：イラスト部分の高さは100px～150pxで設定が必要で、画像下部100px（下から100pxのエリア）は背景の透過ができません（上部0px～50px程度の透過はOKです）。
+        下の帯は画像下部100pxを縦に4倍拡大したものです。1pxでも透過しているピクセルがあればマゼンタ色で強調表示されるので、見た目で気づきにくいわずかな透過も確認できます。
+      </div>
+      <div id="menu-alpha-badge" style="font-size:13px; font-weight:bold; margin-bottom:6px;"></div>
+      <div id="menu-alpha-detail" style="font-size:11px; color:#ef4444; margin-bottom:8px; line-height:1.6;"></div>
+      <canvas id="menu-alpha-canvas" style="width:100%; max-width:100%; border:1px solid var(--border-color); border-radius:6px; display:block;"></canvas>
+      <div style="font-size:10px; color:#94a3b8; margin-top:4px;">
+        ※青い枠線＝下部100pxの保護エリア境界／枠の左右端＝画像の左右のふち。マゼンタ表示されている箇所が透過ピクセルです（濃いほど透過度が高い）。
+      </div>
+    `;
+    container.appendChild(alphaCheckCard);
+    renderMenuAlphaCheck(imageStore['i_11.png']);
   }
 
   // 📏 トーク背景：画面が大きい端末で「上部が切れてカラースキンが見える」問題の確認用プレビュー
@@ -1733,6 +1756,92 @@ function drawMenuSeamCheck(base64) {
       sctx.stroke();
       sctx.restore();
     }
+  };
+  img.src = `data:image/png;base64,${base64}`;
+}
+
+// 🚨 メニュー背景：下部100px・左右端の透過（アルファ<255）を検出する
+// 公式フォーマット規定：イラスト部分の高さは100～150px＝画像下部100pxエリアは透過不可（上部の透過はOK）
+function analyzeMenuBgAlpha(imgEl) {
+  const iw = imgEl.naturalWidth, ih = imgEl.naturalHeight;
+  const c = document.createElement('canvas');
+  c.width = iw; c.height = ih;
+  const ctx = c.getContext('2d');
+  ctx.drawImage(imgEl, 0, 0);
+  const { data } = ctx.getImageData(0, 0, iw, ih);
+
+  const PROTECT_PX = 100; // 📏 下部100pxは透過禁止（公式規定）
+  const protectedFromY = Math.max(0, ih - PROTECT_PX);
+
+  let bottomCount = 0, leftCount = 0, rightCount = 0, minAlpha = 255, firstY = null;
+  for (let y = protectedFromY; y < ih; y++) {
+    for (let x = 0; x < iw; x++) {
+      const a = data[(y * iw + x) * 4 + 3];
+      if (a < 255) {
+        bottomCount++;
+        if (firstY === null) firstY = y;
+        if (a < minAlpha) minAlpha = a;
+        if (x === 0) leftCount++;
+        if (x === iw - 1) rightCount++;
+      }
+    }
+  }
+
+  return { iw, ih, protectedFromY, bottomCount, leftCount, rightCount, minAlpha: bottomCount ? minAlpha : 255, firstY, data };
+}
+
+function renderMenuAlphaCheck(base64) {
+  const img = new Image();
+  img.onload = function() {
+    const r = analyzeMenuBgAlpha(img);
+    const badge = document.getElementById('menu-alpha-badge');
+    const detail = document.getElementById('menu-alpha-detail');
+    const canvas = document.getElementById('menu-alpha-canvas');
+    if (!badge || !detail || !canvas) return;
+
+    if (r.bottomCount === 0) {
+      badge.innerHTML = '✅ OK：下部100px・左右端に透過ピクセルは検出されませんでした';
+      badge.style.color = 'var(--primary-color)';
+      detail.innerHTML = '';
+    } else {
+      badge.innerHTML = `⚠️ NG：下部100pxエリア内に透過ピクセルが ${r.bottomCount.toLocaleString()} 個 検出されました（このままだとリジェクトの可能性があります）`;
+      badge.style.color = '#ef4444';
+      const lines = [];
+      lines.push(`最初に検出された位置：画像上端から ${r.firstY}px目（下部保護エリアの開始位置＝${r.protectedFromY}px）`);
+      lines.push(`検出された最小アルファ値：${r.minAlpha} / 255（255未満はすべて透過として検出しています）`);
+      if (r.leftCount > 0) lines.push(`⬅️ 左端（x=0）で ${r.leftCount.toLocaleString()} 個の透過ピクセルを検出`);
+      if (r.rightCount > 0) lines.push(`➡️ 右端（x=${r.iw - 1}）で ${r.rightCount.toLocaleString()} 個の透過ピクセルを検出`);
+      detail.innerHTML = lines.map(l => `<div>${l}</div>`).join('');
+    }
+
+    // 下部100pxを縦4倍に拡大して描画し、透過ピクセルをマゼンタでオーバーレイ表示
+    const zoomY = 4;
+    const bandH = Math.min(100, r.ih - r.protectedFromY);
+    canvas.width = r.iw;
+    canvas.height = bandH * zoomY;
+    const cctx = canvas.getContext('2d');
+    cctx.imageSmoothingEnabled = false;
+    cctx.drawImage(img, 0, r.protectedFromY, r.iw, bandH, 0, 0, r.iw, canvas.height);
+
+    for (let y = r.protectedFromY; y < r.ih; y++) {
+      for (let x = 0; x < r.iw; x++) {
+        const a = r.data[(y * r.iw + x) * 4 + 3];
+        if (a < 255) {
+          const relY = (y - r.protectedFromY) * zoomY;
+          const strength = Math.max(0.35, (255 - a) / 255); // 透過が強いほど濃く表示
+          cctx.fillStyle = `rgba(255, 0, 200, ${strength})`;
+          cctx.fillRect(x, relY, 1, zoomY);
+        }
+      }
+    }
+
+    // 保護エリアの枠線と左右端の目印（青）
+    cctx.strokeStyle = 'rgba(59,130,246,0.9)';
+    cctx.lineWidth = 2;
+    cctx.strokeRect(1, 1, r.iw - 2, canvas.height - 2);
+    cctx.fillStyle = 'rgba(59,130,246,0.9)';
+    cctx.fillRect(0, 0, 3, canvas.height);
+    cctx.fillRect(r.iw - 3, 0, 3, canvas.height);
   };
   img.src = `data:image/png;base64,${base64}`;
 }
