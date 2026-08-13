@@ -279,9 +279,13 @@
         </div>
 
         <div id="bulk-overlay-section" style="display:none; flex-direction:column; gap:8px;">
-          <p style="font-size:12px; color:#4a5568; margin:0;">📍 元画像の中に自動生成された枠がそのまま表示されています。枠をクリックして選択→ドラッグで移動、右下の■をドラッグでサイズ変更（比率固定）できます。</p>
+          <p style="font-size:12px; color:#4a5568; margin:0;">📍 元画像の中に自動生成された枠がそのまま表示されています。枠をクリックして選択→ドラッグで移動、右下の■をドラッグでサイズ変更（比率固定）できます。<br>🗑️ 元画像のゴミなどで誤って検出された不要な枠は、下の各カードの「🗑」ボタンで削除できます。</p>
           <div id="bulk-overlay-wrap" style="max-height:480px; overflow:auto; border:1px solid var(--border-color); border-radius:6px; background-image: linear-gradient(45deg, #e2e8f0 25%, transparent 25%), linear-gradient(-45deg, #e2e8f0 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e2e8f0 75%), linear-gradient(-45deg, transparent 75%, #e2e8f0 75%); background-size: 16px 16px; background-position: 0 0, 0 8px, 8px -8px, -8px 0;">
             <canvas id="bulk-overlay-canvas" style="max-width:100%; height:auto; display:block; cursor:crosshair; touch-action:none;"></canvas>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+            <span style="font-size:11px; color:#64748b;">👆 不要な枠を🗑で削除し、↑↓で順番を整えたら、下のボタンで「トークOFF→トークON→通話OFF→...」のように順番通り自動で割り当てられます。</span>
+            <button class="btn" style="font-size:12px; padding:6px 12px; white-space:nowrap;" onclick="autoAssignBulkInOrder()">🔢 現在の並び順で自動割り当て</button>
           </div>
         </div>
 
@@ -456,6 +460,7 @@ let passcodeAnimTimer = null;
 
 let bulkPiecesData = []; 
 let bulkCropBoxes = [];   
+let bulkAssignments = []; // 🏷️ 各検出枠に割り当てられた groupKey（bulkPiecesData/bulkCropBoxesと同じ並び順で連動）
 
 const imageStore = {}; 
 
@@ -809,6 +814,7 @@ function resetBulkView() {
   document.getElementById('bulkImageLoader').value = '';
   bulkPiecesData = [];
   bulkCropBoxes = [];
+  bulkAssignments = [];
   bulkSelectedIndex = null;
 }
 
@@ -826,6 +832,7 @@ function showBulkSetup() {
   document.getElementById('bulkImageLoader').value = '';
   bulkPiecesData = [];
   bulkCropBoxes = [];
+  bulkAssignments = [];
   bulkSelectedIndex = null;
 }
 
@@ -975,7 +982,10 @@ function setupCropper(imageSrc) {
   const targetAspect = g.targets[0].w / g.targets[0].h;
 
   cropper = new Cropper(img, {
-    viewMode: 1,
+    // viewMode: 0 にすることで、切り抜き枠を元画像の範囲外まではみ出して配置できるようにしている。
+    // (アイコンが元画像の端にある場合でも、枠の中央に合わせられるようにするため)
+    // はみ出した部分は透明として書き出されるので、アイコン素材などでも問題なく使える。
+    viewMode: 0,
     dragMode: 'move',
     aspectRatio: targetAspect, 
     autoCropArea: 0.9,
@@ -985,7 +995,9 @@ function setupCropper(imageSrc) {
     highlight: false,
     cropBoxMovable: true,
     cropBoxResizable: true,
-    toggleDragModeOnDblclick: false
+    toggleDragModeOnDblclick: false,
+    minContainerWidth: 100,
+    minContainerHeight: 100
   });
   
   document.getElementById('btn-generate').disabled = false;
@@ -1090,13 +1102,6 @@ function processBulkSplit() {
   document.getElementById('bulk-setup-area').style.display = 'none';
   document.getElementById('bulk-reset-area').style.display = 'block';
 
-  const container = document.getElementById('bulk-pieces-container');
-  container.innerHTML = '';
-  container.style.display = 'grid';
-
-  bulkPiecesData = [];
-  bulkCropBoxes = [];
-
   const targetKeys = Object.keys(groups).filter(k => groups[k].step === currentStep);
   const firstTarget = targetKeys.length > 0 ? groups[targetKeys[0]].targets[0] : { w: 1, h: 1 };
   const ratio = firstTarget.w / firstTarget.h;
@@ -1104,21 +1109,41 @@ function processBulkSplit() {
   const boxes = detectSheetRegions(img, ratio);
 
   if (boxes.length === 0) {
+    const container = document.getElementById('bulk-pieces-container');
+    container.innerHTML = '';
+    container.style.display = 'grid';
     container.innerHTML = '<p style="color:#ef4444; font-weight:bold; padding:20px; margin:0;">⚠️ 透明な余白で区切られた領域を検出できませんでした。画像の背景が透過(PNG)になっているかご確認ください。</p>';
     document.getElementById('bulk-submit-bar').style.display = 'none';
     document.getElementById('bulk-overlay-section').style.display = 'none';
+    bulkPiecesData = [];
+    bulkCropBoxes = [];
+    bulkAssignments = [];
     return;
   }
 
   bulkSelectedIndex = null;
   document.getElementById('bulk-overlay-section').style.display = 'flex';
 
-  boxes.forEach((box, index) => {
-    const finalDataUrl = cropSheetToDataUrl(img, box);
+  // 🗑️ ここでは検出された枠をそのまま採用（ゴミなどの誤検出は後から「🗑 この枠を削除」で除外できる）
+  bulkCropBoxes = boxes;
+  bulkPiecesData = boxes.map(box => cropSheetToDataUrl(img, box));
+  bulkAssignments = boxes.map((box, index) => index < targetKeys.length ? targetKeys[index] : '');
 
-    bulkPiecesData.push(finalDataUrl);
-    bulkCropBoxes.push(box); 
+  document.getElementById('bulk-submit-bar').style.display = 'block';
+  renderBulkPieceCards();
+  renderBulkOverlay();
+}
 
+// 📋 検出枠カード一覧を bulkPiecesData/bulkCropBoxes/bulkAssignments から再構築する。
+// 削除・並べ替え・自動割り当てなど、枠の構成が変わるたびにこの関数を呼び直す。
+function renderBulkPieceCards() {
+  const container = document.getElementById('bulk-pieces-container');
+  container.innerHTML = '';
+  container.style.display = 'grid';
+
+  const targetKeys = Object.keys(groups).filter(k => groups[k].step === currentStep);
+
+  bulkPiecesData.forEach((finalDataUrl, index) => {
     const card = document.createElement('div');
     card.className = 'preview-card';
     card.style.display = 'flex';
@@ -1137,12 +1162,17 @@ function processBulkSplit() {
     actionWrap.style.display = 'flex';
     actionWrap.style.justifyContent = 'space-between';
     actionWrap.style.alignItems = 'center';
+    actionWrap.style.gap = '4px';
 
     const label = document.createElement('div');
     label.innerText = `検出領域 #${index + 1}`;
     label.style.fontSize = '12px';
     label.style.color = '#4a5568';
     label.style.fontWeight = 'bold';
+
+    const btnGroup = document.createElement('div');
+    btnGroup.style.display = 'flex';
+    btnGroup.style.gap = '4px';
 
     const adjBtn = document.createElement('button');
     adjBtn.className = 'btn';
@@ -1151,12 +1181,44 @@ function processBulkSplit() {
     adjBtn.style.borderColor = 'var(--primary-color)';
     adjBtn.style.color = 'var(--primary-color)';
     adjBtn.innerText = '🎯 枠を選択';
+    adjBtn.title = 'この枠をキャンバス上で選択して位置・サイズを調整';
+    adjBtn.onclick = (e) => { e.stopPropagation(); selectBulkBox(index); };
 
-    const currentIndex = index;
-    adjBtn.onclick = (e) => { e.stopPropagation(); selectBulkBox(currentIndex); };
+    const upBtn = document.createElement('button');
+    upBtn.className = 'btn';
+    upBtn.style.padding = '3px 6px';
+    upBtn.style.fontSize = '11px';
+    upBtn.innerText = '↑';
+    upBtn.title = '1つ前と順番を入れ替え';
+    upBtn.disabled = (index === 0);
+    upBtn.onclick = (e) => { e.stopPropagation(); moveBulkBox(index, -1); };
+
+    const downBtn = document.createElement('button');
+    downBtn.className = 'btn';
+    downBtn.style.padding = '3px 6px';
+    downBtn.style.fontSize = '11px';
+    downBtn.innerText = '↓';
+    downBtn.title = '1つ後ろと順番を入れ替え';
+    downBtn.disabled = (index === bulkPiecesData.length - 1);
+    downBtn.onclick = (e) => { e.stopPropagation(); moveBulkBox(index, 1); };
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'btn';
+    delBtn.style.padding = '3px 6px';
+    delBtn.style.fontSize = '11px';
+    delBtn.style.borderColor = '#ef4444';
+    delBtn.style.color = '#ef4444';
+    delBtn.innerText = '🗑';
+    delBtn.title = 'この検出枠を削除（ゴミなどの誤検出を除外）';
+    delBtn.onclick = (e) => { e.stopPropagation(); removeBulkBox(index); };
+
+    btnGroup.appendChild(upBtn);
+    btnGroup.appendChild(downBtn);
+    btnGroup.appendChild(adjBtn);
+    btnGroup.appendChild(delBtn);
 
     actionWrap.appendChild(label);
-    actionWrap.appendChild(adjBtn);
+    actionWrap.appendChild(btnGroup);
 
     const select = document.createElement('select');
     select.style.width = '100%';
@@ -1177,7 +1239,8 @@ function processBulkSplit() {
       select.appendChild(opt);
     });
 
-    select.value = index < targetKeys.length ? targetKeys[index] : '';
+    select.value = bulkAssignments[index] || '';
+    select.onchange = () => { bulkAssignments[index] = select.value; };
 
     card.appendChild(imgWrap);
     card.appendChild(actionWrap);
@@ -1185,15 +1248,55 @@ function processBulkSplit() {
     container.appendChild(card);
   });
 
-  if (boxes.length !== targetKeys.length) {
+  if (bulkPiecesData.length !== targetKeys.length) {
     const notice = document.createElement('p');
     notice.style.cssText = 'color:#d97706; font-size:12px; font-weight:bold; grid-column:1/-1; margin:0 0 4px;';
-    notice.innerText = `⚠️ 検出領域数(${boxes.length})と必要枚数(${targetKeys.length})が一致していません。各カードの割り当て先を確認してください。`;
+    notice.innerText = `⚠️ 検出領域数(${bulkPiecesData.length})と必要枚数(${targetKeys.length})が一致していません。不要な枠は🗑で削除、足りない場合は手動で調整してください。`;
     container.prepend(notice);
   }
 
-  document.getElementById('bulk-submit-bar').style.display = 'block';
+  highlightBulkCard(bulkSelectedIndex);
+}
+
+// 🗑️ ゴミ・誤検出などの不要な枠を一覧から削除する
+function removeBulkBox(index) {
+  if (index < 0 || index >= bulkPiecesData.length) return;
+  if (!confirm(`検出領域 #${index + 1} を削除します。よろしいですか？\n（元画像のゴミなどによる誤検出の除外に使えます）`)) return;
+
+  bulkPiecesData.splice(index, 1);
+  bulkCropBoxes.splice(index, 1);
+  bulkAssignments.splice(index, 1);
+  bulkSelectedIndex = null;
+
+  renderBulkPieceCards();
   renderBulkOverlay();
+}
+
+// ↑↓ 枠の順番を入れ替える（削除で順序が崩れた後の微調整や、自動割り当て前の並び替えに使用）
+function moveBulkBox(index, dir) {
+  const newIndex = index + dir;
+  if (newIndex < 0 || newIndex >= bulkPiecesData.length) return;
+
+  [bulkPiecesData[index], bulkPiecesData[newIndex]] = [bulkPiecesData[newIndex], bulkPiecesData[index]];
+  [bulkCropBoxes[index], bulkCropBoxes[newIndex]] = [bulkCropBoxes[newIndex], bulkCropBoxes[index]];
+  [bulkAssignments[index], bulkAssignments[newIndex]] = [bulkAssignments[newIndex], bulkAssignments[index]];
+
+  bulkSelectedIndex = (bulkSelectedIndex === index) ? newIndex : (bulkSelectedIndex === newIndex ? index : bulkSelectedIndex);
+
+  renderBulkPieceCards();
+  renderBulkOverlay();
+}
+
+// 🔢 現在の枠の並び順（#1, #2, #3...）に沿って、トークOFF→トークON→通話OFF→...のように
+// 対応する割り当て先を先頭から順番に自動で振り直す。ゴミ枠を削除したり、↑↓で順番を整えた後に使う。
+function autoAssignBulkInOrder() {
+  const targetKeys = Object.keys(groups).filter(k => groups[k].step === currentStep);
+  if (bulkPiecesData.length === 0) return;
+
+  if (!confirm(`現在の枠の並び順（#1〜#${bulkPiecesData.length}）に沿って、「${targetKeys.map(k => groups[k].label).join('→')}」の順番で自動的に割り当てます。よろしいですか？`)) return;
+
+  bulkAssignments = bulkPiecesData.map((_, index) => index < targetKeys.length ? targetKeys[index] : '');
+  renderBulkPieceCards();
 }
 
 function getBulkRatio() {
@@ -1357,16 +1460,12 @@ function selectBulkBox(index) {
 async function applyBulkImagesToStore() {
   if (bulkPiecesData.length === 0) return;
 
-  const container = document.getElementById('bulk-pieces-container');
-  const cards = container.querySelectorAll('.preview-card');
   const stepName = currentStep === 2 ? "メニューボタン" : "パスコード";
 
   if(!confirm(`調整・割り当て済みの設定に基づいて、全${stepName}画像を一括自動生成・リサイズします。よろしいですか？`)) return;
 
-  for (let i = 0; i < cards.length; i++) {
-    const card = cards[i];
-    const select = card.querySelector('select');
-    const groupKey = select.value;
+  for (let i = 0; i < bulkPiecesData.length; i++) {
+    const groupKey = bulkAssignments[i];
     if (!groupKey) continue; 
 
     const dataUrl = bulkPiecesData[i];
