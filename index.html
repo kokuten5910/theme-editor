@@ -902,6 +902,41 @@ function switchBulkMode(mode) {
   }
 }
 
+// 🔁 パスコード数字アイコン：現在の画像を選択した他の数字/状態にコピーする
+function duplicatePasscodeImage() {
+  if (!currentGroupKey || !currentGroupKey.startsWith('passcode_')) return;
+  const sourceGroup = groups[currentGroupKey];
+  const checkboxes = document.querySelectorAll('.passcode-dup-checkbox:checked');
+
+  if (checkboxes.length === 0) {
+    alert('複製先の数字/状態を選択してください。');
+    return;
+  }
+
+  checkboxes.forEach(cb => {
+    const targetGroup = groups[cb.value];
+    if (!targetGroup) return;
+    // targets（[iOS用ファイル, Android用ファイル]）の並び順が全パスコードグループで共通のため、
+    // 同じインデックス同士でファイルをコピーする
+    sourceGroup.targets.forEach((t, idx) => {
+      const destTarget = targetGroup.targets[idx];
+      if (destTarget && imageStore[t.file]) {
+        imageStore[destTarget.file] = imageStore[t.file];
+      }
+    });
+  });
+
+  renderSidebarList();
+  updateProgressBar();
+
+  const resultEl = document.getElementById('passcode-dup-result');
+  if (resultEl) {
+    resultEl.innerText = `✅ ${checkboxes.length}件に複製しました。`;
+  }
+  // チェックはリセットしておく（連続で別の組み合わせに複製しやすくするため）
+  checkboxes.forEach(cb => { cb.checked = false; });
+}
+
 function renderSidebarList() {
   const sidebar = document.getElementById('sidebar-list');
   sidebar.innerHTML = '';
@@ -1655,6 +1690,47 @@ function renderPreviews() {
     `;
     container.appendChild(card);
   });
+
+  // 🔁 パスコード数字アイコン：生成した画像を他の数字/状態にも複製できるようにする
+  // (数字ごとに違う絵を使う場合もあれば、1と3、2と4のように同じ絵を使い回す場合もあるため)
+  if (currentGroupKey && currentGroupKey.startsWith('passcode_')) {
+    const isCurrentDone = g.targets.every(t => imageStore[t.file]);
+    const duplicateCard = document.createElement('div');
+    duplicateCard.style.cssText = 'width:100%; margin-top:10px;';
+
+    if (!isCurrentDone) {
+      duplicateCard.innerHTML = `
+        <div style="font-size:11px; color:#94a3b8;">
+          ※ この画像を生成すると、他の数字/状態にも複製できるようになります。
+        </div>
+      `;
+    } else {
+      const otherPasscodeGroups = Object.keys(groups).filter(k => k.startsWith('passcode_') && k !== currentGroupKey);
+      const checkboxesHtml = otherPasscodeGroups.map(k => `
+        <label style="display:flex; align-items:center; gap:6px; font-size:12px; padding:4px 0; cursor:pointer;">
+          <input type="checkbox" class="passcode-dup-checkbox" value="${k}">
+          ${groups[k].label}
+        </label>
+      `).join('');
+
+      duplicateCard.innerHTML = `
+        <div style="font-size:12px; font-weight:bold; color:var(--primary-color); margin-bottom:6px;">
+          🔁 この画像を他の数字/状態にも複製
+        </div>
+        <div style="font-size:11px; color:#64748b; margin-bottom:8px;">
+          数字ごとに違う絵を使わず、同じ絵を複数の数字（例：1と3、2と4、または全部同じ）に使い回したい場合は、複製先を選んでまとめて反映できます。
+        </div>
+        <div style="display:flex; flex-direction:column; border:1px solid var(--border-color); border-radius:6px; padding:8px 10px; max-height:180px; overflow-y:auto;">
+          ${checkboxesHtml}
+        </div>
+        <button onclick="duplicatePasscodeImage()" style="margin-top:8px; padding:8px 14px; background:var(--primary-color); color:#fff; border:none; border-radius:6px; font-size:12px; cursor:pointer;">
+          選択した項目にこの画像を複製する
+        </button>
+        <div id="passcode-dup-result" style="font-size:11px; margin-top:6px; color:#16a34a;"></div>
+      `;
+    }
+    container.appendChild(duplicateCard);
+  }
 
   // 🔁 メニュー背景は横方向にリピートして表示される仕様のため、
   // つなぎ目(右端と左端)が綺麗に繋がっているか確認できるプレビューを追加表示する。
