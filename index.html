@@ -1126,7 +1126,27 @@ function addDetectedBox(startX, startY, ow, oh, arr, imgW, imgH, ratio) {
 function cropSheetToDataUrl(img, box) {
   const c = document.createElement('canvas');
   c.width = box.width; c.height = box.height;
-  c.getContext('2d').drawImage(img, box.x, box.y, box.width, box.height, 0, 0, box.width, box.height);
+  const ctx = c.getContext('2d');
+  ctx.clearRect(0, 0, box.width, box.height);
+
+  // 枠が元画像の範囲外にはみ出している場合、はみ出した部分は透明のまま残し、
+  // 画像と重なっている部分だけを正しい位置に描画する。
+  const imgW = img.naturalWidth || img.width;
+  const imgH = img.naturalHeight || img.height;
+
+  const srcX = Math.max(0, box.x);
+  const srcY = Math.max(0, box.y);
+  const srcRight = Math.min(imgW, box.x + box.width);
+  const srcBottom = Math.min(imgH, box.y + box.height);
+  const srcW = srcRight - srcX;
+  const srcH = srcBottom - srcY;
+
+  if (srcW > 0 && srcH > 0) {
+    const destX = srcX - box.x;
+    const destY = srcY - box.y;
+    ctx.drawImage(img, srcX, srcY, srcW, srcH, destX, destY, srcW, srcH);
+  }
+
   return c.toDataURL('image/png');
 }
 
@@ -1420,14 +1440,20 @@ function onBulkCanvasMove(e) {
   const canvas = document.getElementById('bulk-overlay-canvas');
 
   if (bulkDragMode === 'move') {
-    b.x = Math.max(0, Math.min(px - bulkDragOffset.x, canvas.width - b.width));
-    b.y = Math.max(0, Math.min(py - bulkDragOffset.y, canvas.height - b.height));
+    // ※あえて 0〜canvas.width の範囲に制限せず、枠を画像の外まで動かせるようにしている。
+    //   (アイコンが元画像の端にある場合でも、枠の中央に合わせられるようにするため)
+    //   ただし、完全に画面外へ行って見失わないよう、最低でも枠の1/4程度は画像内に残るようにする。
+    const marginX = b.width * 0.75;
+    const marginY = b.height * 0.75;
+    b.x = Math.max(-marginX, Math.min(px - bulkDragOffset.x, canvas.width - b.width + marginX));
+    b.y = Math.max(-marginY, Math.min(py - bulkDragOffset.y, canvas.height - b.height + marginY));
   } else {
     const ratio = getBulkRatio();
     let newW = Math.max(20, bulkDragOffset.sw + (px - bulkDragOffset.sx));
-    newW = Math.min(newW, canvas.width - b.x);
+    // ※リサイズも同様に、画像の外まではみ出せるようにする（右下方向の上限を大きく緩和）
+    newW = Math.min(newW, canvas.width * 2 - b.x);
     let newH = newW / ratio;
-    if (b.y + newH > canvas.height) { newH = canvas.height - b.y; newW = newH * ratio; }
+    if (b.y + newH > canvas.height * 2) { newH = canvas.height * 2 - b.y; newW = newH * ratio; }
     b.width = newW;
     b.height = newH;
   }
